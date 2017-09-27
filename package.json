@@ -1,0 +1,16 @@
+{
+  "name": "@scola/sys-rest",
+  "version": "0.0.0",
+  "description": "REST",
+  "repository": "github:scola84/node-sys-rest",
+  "author": "M.C. van den Boogaart <scola@kvdb.name>",
+  "license": "MIT",
+  "main": "./index.js",
+  "jsnext:main": "./index.js",
+  "dependencies": {
+    "@scola/validator": "^6.1.2",
+    "async": "^2.5.0",
+    "lodash-es": "^4.17.4",
+    "sprintf": "^0.1.5"
+  }
+}
