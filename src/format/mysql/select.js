@@ -1,7 +1,5 @@
 /*eslint no-useless-escape: 0 */
 
-import omit from 'lodash-es/omit';
-import pick from 'lodash-es/pick';
 import sprintf from 'sprintf';
 
 const regexp = {
@@ -14,7 +12,7 @@ const parts = {
     count: `
       SELECT COUNT(*) AS total FROM %s.%s l0`,
     select: `
-      SELECT * FROM %s.%s l0`,
+      SELECT l0.* FROM %s.%s l0`,
     join: `
        INNER JOIN %s.link_%s_%s l%s ON l%s.%s_id = l%s.%s_id`,
     where: {
@@ -28,6 +26,20 @@ const parts = {
         inner: 'l0.%s %s ?'
       }
     },
+    order: {
+      all: `
+        ORDER BY`,
+      field: {
+        asc: `
+          ?? ASC`,
+        desc: `
+          ?? DESC`,
+        iasc: `
+          CAST(?? AS SIGNED) ASC`,
+        idesc: `
+          CAST(?? AS SIGNED) DESC`
+      }
+    },
     limit: `
       LIMIT ?,?`
   },
@@ -38,14 +50,6 @@ const parts = {
 };
 
 export default class MysqlSelect {
-  list(path, values, fields, operator) {
-    const filter = omit(fields, ['count', 'offset']);
-    const limit = pick(fields, ['count', 'offset']);
-    const query = sprintf(parts.list.select, '%(db)s', path[0]);
-
-    return this._list(query, path, values, filter, limit, operator);
-  }
-
   object(name) {
     return sprintf(
       parts.object,
@@ -55,14 +59,35 @@ export default class MysqlSelect {
     );
   }
 
-  total(path, values, fields, operator) {
-    const filter = omit(fields, ['count', 'offset']);
-    const query = sprintf(parts.list.count, '%(db)s', path[0]);
-
-    return this._list(query, path, values, filter, null, operator);
+  list(path, values, { f, o, l }, operator) {
+    const query = sprintf(parts.list.select, '%(db)s', path[0]);
+    return this._list(query, path, values, { f, o, l }, operator);
   }
 
-  _list(query, path, values, filter, limit = null, operator = 'and') {
+  total(path, values, { f }, operator) {
+    const query = sprintf(parts.list.count, '%(db)s', path[0]);
+    return this._list(query, path, values, { f }, operator);
+  }
+
+  _list(query, path, values, { f, l, o }, operator = 'and') {
+    [query] = this._path(query, path);
+
+    if (f) {
+      [query, values] = this._filter(query, values, f, operator);
+    }
+
+    if (o) {
+      [query, values] = this._order(query, values, o);
+    }
+
+    if (l) {
+      [query, values] = this._limit(query, values, l);
+    }
+
+    return [query, values];
+  }
+
+  _path(query, path) {
     path.forEach((part, index) => {
       if (path[index + 1]) {
         query += sprintf(
@@ -89,26 +114,11 @@ export default class MysqlSelect {
       }
     });
 
-    filter = this._filter(filter, values);
-
-    if (filter.length > 0) {
-      query += sprintf(
-        parts.list.where.field.outer,
-        filter.join(' ' + operator + ' ')
-      );
-    }
-
-    if (limit !== null) {
-      query += parts.list.limit;
-      values.push(limit.offset);
-      values.push(limit.count);
-    }
-
-    return [query, values];
+    return [query];
   }
 
-  _filter(filter, values) {
-    return Object.keys(filter).map((field) => {
+  _filter(query, values, filter, operator) {
+    filter = Object.keys(filter).map((field) => {
       const value = String(filter[field]);
       const interval = value.match(regexp.interval);
 
@@ -124,6 +134,42 @@ export default class MysqlSelect {
 
       return this._equal(value, field, values);
     });
+
+    if (filter.length > 0) {
+      query += sprintf(
+        parts.list.where.field.outer,
+        filter.join(' ' + operator + ' ')
+      );
+    }
+
+    return [query, values];
+  }
+
+  _order(query, values, order) {
+    if (typeof order.col === 'string') {
+      order.col = [order.col];
+      order.dir = [order.dir];
+    }
+
+    order = order.dir.map((dir, index) => {
+      values.push(order.col[index]);
+      return parts.list.order.field[dir];
+    });
+
+    if (order.length > 0) {
+      query += parts.list.order.all;
+      query += order.join(',');
+    }
+
+    return [query, values];
+  }
+
+  _limit(query, values, limit) {
+    query += parts.list.limit;
+    values.push(limit.off);
+    values.push(limit.cnt);
+
+    return [query, values];
   }
 
   _interval(interval, field, values) {
