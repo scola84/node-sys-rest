@@ -3,8 +3,8 @@ import Route from '../../route';
 
 const validator = new Validator();
 
-validator.field('count').cast().default(10).integer();
-validator.field('offset').cast().default(0).integer();
+validator.field('l.cnt').cast().default(10).integer();
+validator.field('l.off').cast().default(0).integer();
 validator.strict();
 
 export default class GetListRoute extends Route {
