@@ -85,7 +85,7 @@ export default class Rest {
     }
 
     this._paths[key] = [left];
-    this._path(this._structure[right].children, left, this._paths[key]);
+    this._path(this._structure[right].complex, left, this._paths[key]);
     this._paths[key].push(right);
 
     return this._paths[key];
@@ -126,8 +126,10 @@ export default class Rest {
 
         tables.forEach((table) => {
           if (table.name.match(/link_/) !== null) {
-            this._link(this._structure, table.name);
-          } else if (table.name.match(/_/) === null) {
+            this._complex(this._structure, table.name);
+          } else if (table.name.match(/_/) !== null) {
+            this._simple(this._structure, table.name);
+          } else {
             this._object(this._structure, table.name);
           }
         });
@@ -136,38 +138,50 @@ export default class Rest {
       });
   }
 
-  _link(structure, name) {
+  _complex(structure, name) {
     const [, object, child] = name.split('_');
 
     this._object(structure, object);
     this._object(structure, child);
 
-    structure[object].children.push(child);
+    structure[object].complex.push(child);
 
     if (object !== 'user') {
       structure[child].parents.push(object);
     }
   }
 
+  _simple(structure, name) {
+    const [object, child] = name.split('_');
+
+    if (typeof structure[object] === 'undefined') {
+      return;
+    }
+
+    structure[object].simple.push(child);
+  }
+
   _object(structure, name) {
     if (typeof structure[name] === 'undefined') {
       structure[name] = {
-        parents: [],
-        children: [],
+        complex: [],
+        database: this._config.database.source || 'default',
+        hash: this._config.database.hash || false,
         name,
-        database: this._config.database.source
+        parents: [],
+        simple: []
       };
     }
   }
 
-  _path(children, right, path = []) {
-    if (children.indexOf(right) > -1) {
+  _path(complex, right, path = []) {
+    if (complex.indexOf(right) > -1) {
       return true;
     }
 
-    return children.some((child) => {
+    return complex.some((child) => {
       if (this._structure[child]) {
-        const found = this._path(this._structure[child].children,
+        const found = this._path(this._structure[child].complex,
           right, path);
 
         if (found === true) {

@@ -5,11 +5,12 @@ export default class GetListByUserParentRoute extends GetListByUserRoute {
     this._server
       .router()
       .get(
-        '/user/:parent/' + this._config.name,
+        '/my/:parent/' + this._config.name,
         (rq, rs, n) => this._validatePath(rq, rs, n),
         (rq, rs, n) => this._validateQuery(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUser(rq, rs, n),
+        (rq, rs, n) => this._prepareSelect(rq, rs, n),
         (rq, rs, n) => this._selectTotal(rq, rs, n),
         (rq, rs, n) => this._selectList(rq, rs, n)
       );
@@ -18,7 +19,7 @@ export default class GetListByUserParentRoute extends GetListByUserRoute {
   _authorizeUser(request, response, next) {
     const uid = request.uid();
     const parent = request.param('parent');
-    const path = this._rest.structure('user.children');
+    const path = this._rest.structure('user.complex');
 
     this._user(path, uid, (error, list) => {
       if (error) {
@@ -31,10 +32,13 @@ export default class GetListByUserParentRoute extends GetListByUserRoute {
         return;
       }
 
-      request.datum('path', this._rest.path(this._config.name));
       request.datum('values', [list[parent]]);
-
       next();
     });
+  }
+
+  _prepareSelect(request, response, next) {
+    request.datum('path', this._rest.path(this._config.name));
+    next();
   }
 }

@@ -32,18 +32,30 @@ export default class GetObjectRoute extends ReadObjectRoute {
       .database()
       .connection(this._config.database)
       .query(query)
+      .hash(this._config.hash)
       .prefix(prefix)
-      .execute(values, (error, result) => {
+      .execute(values, (error, result, hash) => {
         if (error) {
           next(request.error('500 invalid_query ' + error));
           return;
         }
 
-        result = this._filter(result[0]);
+        if (request.header('Etag') === hash) {
+          response
+            .status(304)
+            .header('Etag', hash)
+            .end();
+
+          return;
+        }
+
+        if (typeof hash === 'string') {
+          response.header('Etag', hash);
+        }
 
         response
           .status(200)
-          .end(result);
+          .end(this._filter(result[0]));
       });
   }
 }

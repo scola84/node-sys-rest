@@ -153,4 +153,55 @@ export default class Route {
       callback(null, object);
     });
   }
+
+  _authorize(user, name, oid, callback) {
+    if (user.may(name + '.sudo') === true) {
+      callback();
+      return;
+    }
+
+    const uid = user.id();
+    const upath = this._rest.structure('user.complex');
+
+    this._user(upath, uid, (uerror, ulist) => {
+      if (uerror) {
+        callback(uerror);
+        return;
+      }
+
+      const parents = this._rest.structure(name + '.parents');
+
+      if (parents.length === 0) {
+        if (ulist[name].indexOf(oid) > -1) {
+          callback();
+        } else {
+          callback(new Error('No parent found'));
+        }
+
+        return;
+      }
+
+      const opath = this._rest.path(name);
+
+      this._object(opath, oid, (oerror, olist) => {
+        if (oerror) {
+          callback(oerror);
+          return;
+        }
+
+        const found = Object.keys(olist).some((parent) => {
+          return ulist[parent].filter((id) => {
+            return olist[parent].indexOf(id) > -1;
+          }).length > 0;
+        });
+
+        if (found === false) {
+          callback(new Error('No parent found'));
+          return;
+        }
+
+        callback();
+      });
+    });
+  }
 }

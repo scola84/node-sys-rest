@@ -7,11 +7,17 @@ export default class PutLinkRoute extends WriteLinkRoute {
       .put(
         '/' + this._config.name + '/:oid/:child/:cid',
         (rq, rs, n) => this._validatePath(rq, rs, n),
+        (rq, rs, n) => this._validateData(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
         (rq, rs, n) => this._authorizeUserChild(rq, rs, n),
         (rq, rs, n) => this._update(rq, rs, n)
-      );
+      )
+      .extract();
+  }
+
+  _validateData(request, response, next) {
+    next();
   }
 
   _update(request, response, next) {
@@ -23,27 +29,30 @@ export default class PutLinkRoute extends WriteLinkRoute {
       child
     ];
 
+    const type = this._config.simple.indexOf(child) > -1 ?
+      'simple' : 'complex';
+
     const query = this._format
       .format('update')
-      .link(path);
+      .link(path, type);
 
-    const link = {
+    let data = {
       [this._config.name + '_id']: params.oid,
       [child + '_id']: params.cid
     };
 
-    const values = this._filter({
-      [this._config.name + '_id']: params.oid,
-      [child + '_id']: params.cid
-    });
+    if (type === 'simple') {
+      data = Object.assign({}, request.data(), data);
+    }
+
+    const values = this._filter(data);
 
     this._server
       .database()
       .connection(this._config.database)
       .query(query)
-      .execute([values, link], (error) => {
+      .execute(values, (error) => {
         if (error) {
-          console.log(error.sql);
           next(request.error('500 invalid_query ' + error));
           return;
         }

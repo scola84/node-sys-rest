@@ -20,7 +20,7 @@ export default class ObjectRoute extends Route {
     const oid = request.param('id');
     const uid = user.id();
 
-    const upath = this._rest.structure('user.children');
+    const upath = this._rest.structure('user.complex');
 
     this._user(upath, uid, (uerror, ulist) => {
       if (uerror) {

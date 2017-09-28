@@ -34,9 +34,9 @@ const parts = {
           ?? ASC`,
         desc: `
           ?? DESC`,
-        iasc: `
+        sigasc: `
           CAST(?? AS SIGNED) ASC`,
-        idesc: `
+        sigdesc: `
           CAST(?? AS SIGNED) DESC`
       }
     },
@@ -90,43 +90,62 @@ export default class MysqlSelect {
   _path(query, path) {
     path.forEach((part, index) => {
       if (path[index + 1]) {
-        query += sprintf(
-          parts.list.join,
-          '%(db)s',
-          path[index + 1],
-          part,
-          index + 1,
-          index,
-          part,
-          index + 1,
-          part
-        );
+        query += this._join(path, index);
+      } else if (path[index]) {
+        query += this._complex(path, index);
       } else {
-        query += parts.list.where.all;
-
-        if (index > 0) {
-          query += sprintf(
-            parts.list.where.id,
-            index,
-            part
-          );
-        }
+        query += this._simple(path, index);
       }
     });
 
     return [query];
   }
 
+  _join(path, index) {
+    return sprintf(
+      parts.list.join,
+      '%(db)s',
+      path[index + (path.reversed ? 0 : 1)],
+      path[index + (path.reversed ? 1 : 0)],
+      index + 1,
+      index,
+      path[index],
+      index + 1,
+      path[index]
+    );
+  }
+
+  _complex(path, index) {
+    let complex = parts.list.where.all;
+
+    if (index > 0) {
+      complex += sprintf(
+        parts.list.where.id,
+        index,
+        path[index]
+      );
+    }
+
+    return complex;
+  }
+
+  _simple(path, index) {
+    return sprintf(
+      parts.list.where.id,
+      index - 1,
+      path[index - 1].split('_').shift()
+    );
+  }
+
   _filter(query, values, filter, operator) {
     filter = Object.keys(filter).map((field) => {
       const value = String(filter[field]);
       const interval = value.match(regexp.interval);
+      const like = value.match(regexp.like);
 
       if (interval) {
         return this._interval(interval, field, values);
       }
-
-      const like = value.match(regexp.like);
 
       if (like) {
         return this._like(value, field, values);
@@ -141,33 +160,6 @@ export default class MysqlSelect {
         filter.join(' ' + operator + ' ')
       );
     }
-
-    return [query, values];
-  }
-
-  _order(query, values, order) {
-    if (typeof order.col === 'string') {
-      order.col = [order.col];
-      order.dir = [order.dir];
-    }
-
-    order = order.dir.map((dir, index) => {
-      values.push(order.col[index]);
-      return parts.list.order.field[dir];
-    });
-
-    if (order.length > 0) {
-      query += parts.list.order.all;
-      query += order.join(',');
-    }
-
-    return [query, values];
-  }
-
-  _limit(query, values, limit) {
-    query += parts.list.limit;
-    values.push(limit.off);
-    values.push(limit.cnt);
 
     return [query, values];
   }
@@ -198,5 +190,32 @@ export default class MysqlSelect {
   _equal(value, field, values) {
     values.push(value);
     return sprintf(parts.list.where.field.inner, field, '=');
+  }
+
+  _order(query, values, order) {
+    if (typeof order.col === 'string') {
+      order.col = [order.col];
+      order.dir = [order.dir];
+    }
+
+    order = order.dir.map((dir, index) => {
+      values.push(order.col[index]);
+      return parts.list.order.field[dir];
+    });
+
+    if (order.length > 0) {
+      query += parts.list.order.all;
+      query += order.join(',');
+    }
+
+    return [query, values];
+  }
+
+  _limit(query, values, limit) {
+    query += parts.list.limit;
+    values.push(limit.off);
+    values.push(limit.cnt);
+
+    return [query, values];
   }
 }

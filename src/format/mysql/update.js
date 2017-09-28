@@ -1,10 +1,14 @@
 import sprintf from 'sprintf';
 
 const parts = {
-  link: `
-    INSERT INTO %s.link_%s_%s
-    SET ?
-    ON DUPLICATE KEY UPDATE ?`,
+  link: {
+    complex: `
+      REPLACE INTO %s.link_%s_%s
+      SET ?`,
+    simple: `
+      REPLACE INTO %s.%s_%s
+      SET ?`
+  },
   object: `
     UPDATE %s.%s
     SET ?
@@ -12,9 +16,9 @@ const parts = {
 };
 
 export default class MysqlUpdate {
-  link(path) {
+  link(path, type) {
     return sprintf(
-      parts.link,
+      parts.link[type],
       '%(db)s',
       path[0],
       path[1]

@@ -9,7 +9,11 @@ export default class WriteLinkRoute extends Route {
   _validatePath(request, response, next) {
     const child = request.param('child');
 
-    if (this._config.children.indexOf(child) === -1) {
+    const isChild =
+      this._config.complex.indexOf(child) > -1 ||
+      this._config.simple.indexOf(child) > -1;
+
+    if (isChild === false) {
       next(request.error('404 invalid_path'));
       return;
     }
@@ -30,107 +34,36 @@ export default class WriteLinkRoute extends Route {
 
   _authorizeUserObject(request, response, next) {
     const user = request.connection().user();
+    const name = this._config.name;
+    const id = request.param('oid');
 
-    if (user.may(this._config.name + '.sudo') === true) {
-      next();
-      return;
-    }
-
-    const oid = request.param('oid');
-    const uid = user.id();
-
-    const upath = this._rest.structure('user.children');
-
-    this._user(upath, uid, (uerror, ulist) => {
-      if (uerror) {
-        next(uerror);
+    this._authorize(user, name, id, (error) => {
+      if (error) {
+        next(request.error('403 invalid_auth'));
         return;
       }
 
-      if (this._config.parents.length === 0) {
-        if (ulist[this._config.name].indexOf(oid) > -1) {
-          next();
-          return;
-        }
-      }
-
-      const opath = this._rest.path(this._config.name);
-
-      this._object(opath, oid, (oerror, olist) => {
-        if (oerror) {
-          next(oerror);
-          return;
-        }
-
-        const found = Object.keys(olist).some((parent) => {
-          return ulist[parent].filter((i) => {
-            return olist[parent].indexOf(i) > -1;
-          }).length > 0;
-        });
-
-        if (found === false) {
-          next(request.error('403 invalid_auth'));
-          return;
-        }
-
-        next();
-      });
+      next();
     });
   }
 
   _authorizeUserChild(request, response, next) {
-    const child = request.param('child');
     const user = request.connection().user();
+    const name = request.param('child');
+    const id = request.param('cid');
 
-    if (user.may(child + '.sudo') === true) {
+    if (this._config.simple.indexOf(name) > -1) {
       next();
       return;
     }
 
-    const cid = request.param('cid');
-    const uid = user.id();
-
-    const upath = this._rest.structure('user.children');
-
-    this._user(upath, uid, (uerror, ulist) => {
-      if (uerror) {
-        next(uerror);
+    this._authorize(user, name, id, (error) => {
+      if (error) {
+        next(request.error('403 invalid_auth'));
         return;
       }
 
-      const parents = this._rest.structure(child + '.parents');
-
-      if (parents.length === 0) {
-        if (ulist[child].indexOf(cid) > -1) {
-          next();
-          return;
-        }
-      }
-
-      const cpath = this._rest.path(child);
-
-      this._object(cpath, cid, (cerror, clist) => {
-        if (cerror) {
-          next(cerror);
-          return;
-        }
-
-        const list = Object.keys(clist);
-        let found = list.length === 0;
-
-        found = found || list.some((parent) => {
-          return ulist[parent].filter((i) => {
-            return clist[parent].indexOf(i) > -1;
-          }).length > 0;
-        });
-
-        if (found === false) {
-          next(request.error('403 invalid_auth'));
-          return;
-        }
-
-        next();
-      });
+      next();
     });
   }
 

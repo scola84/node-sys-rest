@@ -5,7 +5,7 @@ export default class GetListByUserRoute extends GetListRoute {
     this._server
       .router()
       .get(
-        '/user/' + this._config.name,
+        '/my/' + this._config.name,
         (rq, rs, n) => this._validateQuery(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._prepareSelect(rq, rs, n),
@@ -28,8 +28,8 @@ export default class GetListByUserRoute extends GetListRoute {
   _prepareSelect(request, response, next) {
     const path = [this._config.name, 'user'];
 
-    if (this._config.children.indexOf('user') > -1) {
-      path.reverse();
+    if (this._config.complex.indexOf('user') > -1) {
+      path.reversed = true;
     }
 
     request.datum('path', path);
