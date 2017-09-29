@@ -2,7 +2,7 @@ import { Validator } from '@scola/validator';
 import Route from '../../route';
 
 const validator = new Validator();
-validator.field('id').cast().integer();
+validator.field('oid').cast().integer();
 
 export default class ObjectRoute extends Route {
   _validatePath(request, response, next) {
@@ -17,12 +17,12 @@ export default class ObjectRoute extends Route {
       return;
     }
 
-    const oid = request.param('id');
+    const oid = request.param('oid');
     const uid = user.id();
 
     const upath = this._rest.structure('user.complex');
 
-    this._user(upath, uid, (uerror, ulist) => {
+    this._buildUserAuth(upath, uid, (uerror, ulist) => {
       if (uerror) {
         next(uerror);
         return;
@@ -37,7 +37,7 @@ export default class ObjectRoute extends Route {
 
       const opath = this._rest.path(this._config.name);
 
-      this._object(opath, oid, (oerror, olist) => {
+      this._buildObjectAuth(opath, oid, (oerror, olist) => {
         if (oerror) {
           next(oerror);
           return;
@@ -57,9 +57,5 @@ export default class ObjectRoute extends Route {
         next();
       });
     });
-  }
-
-  _filter(object) {
-    return object;
   }
 }

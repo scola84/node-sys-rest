@@ -165,8 +165,7 @@ export default class Rest {
     if (typeof structure[name] === 'undefined') {
       structure[name] = {
         complex: [],
-        database: this._config.database.source || 'default',
-        hash: this._config.database.hash || false,
+        database: this._config.database.source,
         name,
         parents: [],
         simple: []

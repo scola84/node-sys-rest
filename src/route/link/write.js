@@ -37,7 +37,7 @@ export default class WriteLinkRoute extends Route {
     const name = this._config.name;
     const id = request.param('oid');
 
-    this._authorize(user, name, id, (error) => {
+    this._authorizeRequest(user, name, id, (error) => {
       if (error) {
         next(request.error('403 invalid_auth'));
         return;
@@ -57,7 +57,7 @@ export default class WriteLinkRoute extends Route {
       return;
     }
 
-    this._authorize(user, name, id, (error) => {
+    this._authorizeRequest(user, name, id, (error) => {
       if (error) {
         next(request.error('403 invalid_auth'));
         return;
@@ -65,9 +65,5 @@ export default class WriteLinkRoute extends Route {
 
       next();
     });
-  }
-
-  _filter(object) {
-    return object;
   }
 }

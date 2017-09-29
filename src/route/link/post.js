@@ -14,7 +14,8 @@ export default class PostLinkRoute extends WriteLinkRoute {
         (rq, rs, n) => this._validateData(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
-        (rq, rs, n) => this._insert(rq, rs, n)
+        (rq, rs, n) => this._insertLink(rq, rs, n),
+        (rq, rs, n) => this._publishLink(rq, rs, n)
       )
       .extract();
   }
@@ -34,7 +35,7 @@ export default class PostLinkRoute extends WriteLinkRoute {
     next();
   }
 
-  _insert(request, response, next) {
+  _insertLink(request, response, next) {
     const params = request.params();
     const child = request.param('child');
 
@@ -51,7 +52,7 @@ export default class PostLinkRoute extends WriteLinkRoute {
       [this._config.name + '_id']: params.oid
     });
 
-    const values = this._filter(data);
+    const values = this._applyFilter(data);
 
     this._server
       .database()
@@ -68,9 +69,31 @@ export default class PostLinkRoute extends WriteLinkRoute {
           .id(result);
 
         response
-          .header('x-id', id)
+          .header('x-cid', id)
           .status(201)
           .end();
+
+        next();
+      });
+  }
+
+  _publishLink(request, response) {
+    if (this._publish === false) {
+      return;
+    }
+
+    this._server
+      .pubsub()
+      .client()
+      .publish(this._rest.config('pubsub.path'), {
+        event: this._config.name,
+        data: {
+          child: request.param('child'),
+          cid: response.header('x-cid'),
+          method: 'POST',
+          oid: request.param('oid'),
+          uid: request.uid()
+        }
       });
   }
 }

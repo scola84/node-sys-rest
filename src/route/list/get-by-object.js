@@ -2,22 +2,27 @@ import { Validator } from '@scola/validator';
 import GetListRoute from './get';
 
 const validator = new Validator();
-validator.field('id').cast().integer();
+validator.field('oid').cast().integer();
 
 export default class GetListByObjectRoute extends GetListRoute {
   start() {
     this._server
       .router()
       .get(
-        '/' + this._config.name + '/:id/:child',
+        '/' + this._config.name + '/:oid/:child',
         (rq, rs, n) => this._validatePath(rq, rs, n),
         (rq, rs, n) => this._validateQuery(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUser(rq, rs, n),
         (rq, rs, n) => this._prepareSelect(rq, rs, n),
         (rq, rs, n) => this._selectTotal(rq, rs, n),
-        (rq, rs, n) => this._selectList(rq, rs, n)
+        (rq, rs, n) => this._selectList(rq, rs, n),
+        (rq, rs, n) => this._subscribeRequest(rq, rs, n)
       );
+
+    if (this._subscribe === true) {
+      this._bindPubsub();
+    }
   }
 
   _validatePath(request, response, next) {
@@ -49,9 +54,9 @@ export default class GetListByObjectRoute extends GetListRoute {
   _authorizeUser(request, response, next) {
     const user = request.connection().user();
     const name = this._config.name;
-    const id = request.param('id');
+    const id = request.param('oid');
 
-    this._authorize(user, name, id, (error) => {
+    this._authorizeRequest(user, name, id, (error) => {
       if (error) {
         next(request.error('403 invalid_auth'));
         return;
@@ -65,7 +70,7 @@ export default class GetListByObjectRoute extends GetListRoute {
     const child = request.param('child');
 
     let path = [child, this._config.name];
-    const values = [request.param('id')];
+    const values = [request.param('oid')];
 
     if (this._config.simple.indexOf(child) > -1) {
       path = [path.reverse().join('_'), null];
@@ -75,5 +80,22 @@ export default class GetListByObjectRoute extends GetListRoute {
     request.datum('values', values);
 
     next();
+  }
+
+  _handlePubsub(event) {
+    const channel = '/' + [
+      this._config.name,
+      event.oid,
+      event.child
+    ].join('/');
+
+    this._server
+      .cache()
+      .invalidate(this._config.name);
+
+    this._server
+      .pubsub()
+      .fanout(channel)
+      .publish(event);
   }
 }

@@ -11,7 +11,8 @@ export default class PutLinkRoute extends WriteLinkRoute {
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
         (rq, rs, n) => this._authorizeUserChild(rq, rs, n),
-        (rq, rs, n) => this._update(rq, rs, n)
+        (rq, rs, n) => this._updateLink(rq, rs, n),
+        (rq, rs, n) => this._publishLink(rq, rs, n)
       )
       .extract();
   }
@@ -20,7 +21,7 @@ export default class PutLinkRoute extends WriteLinkRoute {
     next();
   }
 
-  _update(request, response, next) {
+  _updateLink(request, response, next) {
     const params = request.params();
     const child = request.param('child');
 
@@ -45,7 +46,7 @@ export default class PutLinkRoute extends WriteLinkRoute {
       data = Object.assign({}, request.data(), data);
     }
 
-    const values = this._filter(data);
+    const values = this._applyFilter(data);
 
     this._server
       .database()
@@ -60,6 +61,28 @@ export default class PutLinkRoute extends WriteLinkRoute {
         response
           .status(200)
           .end();
+
+        next();
+      });
+  }
+
+  _publishLink(request, response) {
+    if (this._publish === false) {
+      return;
+    }
+
+    this._server
+      .pubsub()
+      .client()
+      .publish(this._rest.config('pubsub.path'), {
+        event: this._config.name,
+        data: {
+          child: request.param('child'),
+          cid: response.header('x-cid'),
+          method: 'PUT',
+          oid: request.param('oid'),
+          uid: request.uid()
+        }
       });
   }
 }

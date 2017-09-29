@@ -10,8 +10,13 @@ export default class GetListByUserRoute extends GetListRoute {
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._prepareSelect(rq, rs, n),
         (rq, rs, n) => this._selectTotal(rq, rs, n),
-        (rq, rs, n) => this._selectList(rq, rs, n)
+        (rq, rs, n) => this._selectList(rq, rs, n),
+        (rq, rs, n) => this._subscribeRequest(rq, rs, n)
       );
+
+    if (this._subscribe === true) {
+      this._bindPubsub();
+    }
   }
 
   _authorizeRole(request, response, next) {
@@ -36,5 +41,16 @@ export default class GetListByUserRoute extends GetListRoute {
     request.datum('values', [request.uid()]);
 
     next();
+  }
+
+  _handlePubsub(event) {
+    this._server
+      .cache()
+      .invalidate(this._config.name);
+
+    this._server
+      .pubsub()
+      .fanout('/my/' + this._config.name)
+      .publish(event);
   }
 }

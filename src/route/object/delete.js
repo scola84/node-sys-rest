@@ -5,21 +5,22 @@ export default class DeleteObjectRoute extends WriteObjectRoute {
     this._server
       .router()
       .delete(
-        '/' + this._config.name + '/:id',
+        '/' + this._config.name + '/:oid',
         (rq, rs, n) => this._validatePath(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUser(rq, rs, n),
-        (rq, rs, n) => this._delete(rq, rs, n)
+        (rq, rs, n) => this._deleteObject(rq, rs, n),
+        (rq, rs, n) => this._publishObject(rq, rs, n)
       );
   }
 
-  _delete(request, response, next) {
+  _deleteObject(request, response, next) {
     const query = this._format
       .format('delete')
       .object(this._config.name);
 
     const values = [
-      request.param('id')
+      request.param('oid')
     ];
 
     this._server
@@ -35,6 +36,26 @@ export default class DeleteObjectRoute extends WriteObjectRoute {
         response
           .status(200)
           .end();
+
+        next();
+      });
+  }
+
+  _publishRequest(request) {
+    if (this._publish === false) {
+      return;
+    }
+
+    this._server
+      .pubsub()
+      .client()
+      .publish(this._rest.config('pubsub.path'), {
+        event: this._config.name,
+        data: {
+          method: 'DELETE',
+          oid: request.param('oid'),
+          uid: request.uid()
+        }
       });
   }
 }

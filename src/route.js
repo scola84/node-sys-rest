@@ -3,11 +3,24 @@ import waterfall from 'async/waterfall';
 
 export default class Route {
   constructor() {
+    this._cache = true;
     this._config = null;
+    this._etag = true;
+    this._filter = (o) => o;
     this._format = null;
+    this._publish = true;
     this._rest = null;
     this._server = null;
-    this._structure = null;
+    this._subscribe = true;
+  }
+
+  cache(value = null) {
+    if (value === null) {
+      return this._cache;
+    }
+
+    this._cache = value;
+    return this;
   }
 
   config(value = null) {
@@ -16,6 +29,24 @@ export default class Route {
     }
 
     this._config = value;
+    return this;
+  }
+
+  etag(value = null) {
+    if (value === null) {
+      return this._etag;
+    }
+
+    this._etag = value;
+    return this;
+  }
+
+  filter(value = null) {
+    if (value === null) {
+      return this._filter;
+    }
+
+    this._filter = value;
     return this;
   }
 
@@ -46,16 +77,77 @@ export default class Route {
     return this;
   }
 
-  structure(value = null) {
+  subscribe(value = null) {
     if (value === null) {
-      return this._structure;
+      return this._subscribe;
     }
 
-    this._structure = value;
+    this._subscribe = value;
     return this;
   }
 
-  _user(fields, id, callback) {
+  _bindPubsub() {
+    this._server
+      .pubsub()
+      .client()
+      .subscribe(this._rest.config('pubsub.path'))
+      .on(this._config.name, (event) => {
+        this._handlePubsub(event);
+      });
+  }
+
+  _authorizeRequest(user, name, oid, callback) {
+    if (user.may(name + '.sudo') === true) {
+      callback();
+      return;
+    }
+
+    const uid = user.id();
+    const upath = this._rest.structure('user.complex');
+
+    this._buildUserAuth(upath, uid, (uerror, ulist) => {
+      if (uerror) {
+        callback(uerror);
+        return;
+      }
+
+      const parents = this._rest.structure(name + '.parents');
+
+      if (parents.length === 0) {
+        if (ulist[name].indexOf(oid) > -1) {
+          callback();
+        } else {
+          callback(new Error('No parent found'));
+        }
+
+        return;
+      }
+
+      const opath = this._rest.path(name);
+
+      this._buildObjectAuth(opath, oid, (oerror, olist) => {
+        if (oerror) {
+          callback(oerror);
+          return;
+        }
+
+        const found = Object.keys(olist).some((parent) => {
+          return ulist[parent].filter((id) => {
+            return olist[parent].indexOf(id) > -1;
+          }).length > 0;
+        });
+
+        if (found === false) {
+          callback(new Error('No parent found'));
+          return;
+        }
+
+        callback();
+      });
+    });
+  }
+
+  _buildUserAuth(fields, id, callback) {
     const user = {};
 
     eachOf(fields, (field, index, eachCallback) => {
@@ -65,8 +157,7 @@ export default class Route {
 
       const prefix = [
         'user',
-        id,
-        field
+        id
       ].join(':');
 
       const values = [id];
@@ -98,7 +189,7 @@ export default class Route {
     });
   }
 
-  _object(fields, id, callback) {
+  _buildObjectAuth(fields, id, callback) {
     const object = {};
 
     const tasks = fields.slice(0, -1).map((field, index) => {
@@ -109,8 +200,7 @@ export default class Route {
 
         const prefix = [
           fields[0],
-          id,
-          fields[index + 1]
+          id
         ].join(':');
 
         const values = [ids];
@@ -154,54 +244,48 @@ export default class Route {
     });
   }
 
-  _authorize(user, name, oid, callback) {
-    if (user.may(name + '.sudo') === true) {
-      callback();
+  _addEtag(request, response, hash) {
+    const cancel =
+      this._etag === false ||
+      hash === null;
+
+    if (cancel === true) {
+      return false;
+    }
+
+    hash = '"' + hash + '"';
+
+    response.header('Etag', hash);
+
+    if (request.header('If-None-Match') === hash) {
+      response
+        .status(304)
+        .end();
+
+      return true;
+    }
+
+    return false;
+  }
+
+  _applyFilter(list) {
+    return this._filter(list);
+  }
+
+  _subscribeRequest(request, response) {
+    const cancel =
+      this._subscribe === false ||
+      Number(request.header('x-more')) === 0;
+
+    if (cancel === true) {
       return;
     }
 
-    const uid = user.id();
-    const upath = this._rest.structure('user.complex');
-
-    this._user(upath, uid, (uerror, ulist) => {
-      if (uerror) {
-        callback(uerror);
-        return;
-      }
-
-      const parents = this._rest.structure(name + '.parents');
-
-      if (parents.length === 0) {
-        if (ulist[name].indexOf(oid) > -1) {
-          callback();
-        } else {
-          callback(new Error('No parent found'));
-        }
-
-        return;
-      }
-
-      const opath = this._rest.path(name);
-
-      this._object(opath, oid, (oerror, olist) => {
-        if (oerror) {
-          callback(oerror);
-          return;
-        }
-
-        const found = Object.keys(olist).some((parent) => {
-          return ulist[parent].filter((id) => {
-            return olist[parent].indexOf(id) > -1;
-          }).length > 0;
-        });
-
-        if (found === false) {
-          callback(new Error('No parent found'));
-          return;
-        }
-
-        callback();
-      });
-    });
+    this._server
+      .pubsub()
+      .fanout(request.path())
+      .subscribe(request, response);
   }
+
+  _handlePubsub() {}
 }

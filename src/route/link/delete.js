@@ -10,23 +10,30 @@ export default class DeleteLinkRoute extends WriteLinkRoute {
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
         (rq, rs, n) => this._authorizeUserChild(rq, rs, n),
-        (rq, rs, n) => this._delete(rq, rs, n)
+        (rq, rs, n) => this._deleteLink(rq, rs, n),
+        (rq, rs, n) => this._publishLink(rq, rs, n)
       );
   }
 
-  _delete(request, response, next) {
+  _deleteLink(request, response, next) {
+    const params = request.params();
+    const child = request.param('child');
+
     const path = [
       this._config.name,
-      request.param('child')
+      child
     ];
+
+    const type = this._config.simple.indexOf(child) > -1 ?
+      'simple' : 'complex';
 
     const query = this._format
       .format('delete')
-      .link(path);
+      .link(path, type);
 
     const values = [
-      request.param('oid'),
-      request.param('cid')
+      params.oid,
+      params.cid
     ];
 
     this._server
@@ -42,6 +49,28 @@ export default class DeleteLinkRoute extends WriteLinkRoute {
         response
           .status(200)
           .end();
+
+        next();
+      });
+  }
+
+  _publishLink(request) {
+    if (this._publish === false) {
+      return;
+    }
+
+    this._server
+      .pubsub()
+      .client()
+      .publish(this._rest.config('pubsub.path'), {
+        event: this._config.name,
+        data: {
+          child: request.param('child'),
+          cid: request.param('cid'),
+          method: 'DELETE',
+          oid: request.param('oid'),
+          uid: request.uid()
+        }
       });
   }
 }

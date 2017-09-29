@@ -17,8 +17,13 @@ export default class GetListRoute extends Route {
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._prepareSelect(rq, rs, n),
         (rq, rs, n) => this._selectTotal(rq, rs, n),
-        (rq, rs, n) => this._selectList(rq, rs, n)
+        (rq, rs, n) => this._selectList(rq, rs, n),
+        (rq, rs, n) => this._subscribeRequest(rq, rs, n)
       );
+
+    if (this._subscribe === true) {
+      this._bindPubsub();
+    }
   }
 
   _validateQuery(request, response, next) {
@@ -91,38 +96,50 @@ export default class GetListRoute extends Route {
         request.query()
       );
 
-    this._server
+    const qo = this._server
       .database()
       .connection(this._config.database)
-      .query(query)
-      .hash(this._config.hash)
-      .prefix(this._config.name)
-      .execute(values, (error, result, hash) => {
-        if (error) {
-          next(request.error('500 invalid_query ' + error));
-          return;
+      .query(query);
+
+    if (this._cache === true) {
+      qo.prefix(this._config.name);
+    }
+
+    qo.execute(values, (error, result, hash) => {
+      if (error) {
+        next(request.error('500 invalid_query ' + error));
+        return;
+      }
+
+      const ended = this._addEtag(request, response, hash);
+
+      if (ended === false) {
+        result = this._applyFilter(result);
+        response.status(200);
+
+        const write =
+          Number(request.header('x-more')) === 1 &&
+          this._subscribe === true;
+
+        if (write === true) {
+          response.write(result);
+        } else {
+          response.end(result);
         }
+      }
 
-        if (request.header('Etag') === hash) {
-          response
-            .status(304)
-            .header('Etag', hash)
-            .end();
-
-          return;
-        }
-
-        if (typeof hash === 'string') {
-          response.header('etag', hash);
-        }
-
-        response
-          .status(200)
-          .end(this._filter(result));
-      });
+      next();
+    });
   }
 
-  _filter(list) {
-    return list;
+  _handlePubsub(event) {
+    this._server
+      .cache()
+      .invalidate(this._config.name);
+
+    this._server
+      .pubsub()
+      .fanout('/' + this._config.name)
+      .publish(event);
   }
 }

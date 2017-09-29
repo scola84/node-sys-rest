@@ -8,17 +8,18 @@ export default class PostObjectRoute extends WriteObjectRoute {
         '/' + this._config.name,
         (rq, rs, n) => this._validateData(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
-        (rq, rs, n) => this._insert(rq, rs, n)
+        (rq, rs, n) => this._insertObject(rq, rs, n),
+        (rq, rs, n) => this._publishObject(rq, rs, n)
       )
       .extract();
   }
 
-  _insert(request, response, next) {
+  _insertObject(request, response, next) {
     const query = this._format
       .format('insert')
       .object(this._config.name);
 
-    const values = this._filter(request.data());
+    const values = this._applyFilter(request.data());
 
     this._server
       .database()
@@ -35,9 +36,30 @@ export default class PostObjectRoute extends WriteObjectRoute {
           .id(result);
 
         response
-          .header('x-id', id)
+          .header('x-oid', id)
           .status(201)
           .end();
+
+        next();
+      });
+  }
+
+  _publishObject(request, response) {
+    if (this._publish === false) {
+      return;
+    }
+
+    this._server
+      .pubsub()
+      .client()
+      .publish(this._rest.config('pubsub.path'), {
+        event: this._config.name,
+        data: {
+          data: request.data(),
+          method: 'POST',
+          oid: response.header('x-oid'),
+          uid: request.uid()
+        }
       });
   }
 }
