@@ -13,9 +13,16 @@ const parts = {
         %s_id = ? AND
         %s_id = ?`
   },
-  object: `
-    DELETE FROM %s.%s
-    WHERE %s_id = ?`
+  object: {
+    delete: `
+      DELETE FROM %s.%s`,
+    where: {
+      all: `
+        WHERE %s_id = ?`,
+      etag: `
+        AND %s = ?`
+    }
+  }
 };
 
 export default class MysqlDelete {
@@ -30,12 +37,18 @@ export default class MysqlDelete {
     );
   }
 
-  object(name) {
-    return sprintf(
-      parts.object,
-      '%(db)s',
-      name,
-      name
-    );
+  object(name, id, field, etag) {
+    let query = sprintf(parts.object.delete, '%(db)s', name);
+    const values = [];
+
+    query += sprintf(parts.object.where.all, name);
+    values.push(id);
+
+    if (field !== null && etag !== null) {
+      query += sprintf(parts.object.where.etag, field);
+      values.push(etag);
+    }
+
+    return [query, values];
   }
 }

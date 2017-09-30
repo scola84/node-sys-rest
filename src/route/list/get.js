@@ -1,4 +1,5 @@
 import { Validator } from '@scola/validator';
+import md5 from 'crypto-js/md5';
 import Route from '../../route';
 
 const validator = new Validator();
@@ -105,31 +106,70 @@ export default class GetListRoute extends Route {
       qo.prefix(this._config.name);
     }
 
-    qo.execute(values, (error, result, hash) => {
+    qo.execute(values, (error, result) => {
       if (error) {
         next(request.error('500 invalid_query ' + error));
         return;
       }
 
-      const ended = this._addEtag(request, response, hash);
+      result = this._applyFilter(result);
 
-      if (ended === false) {
-        result = this._applyFilter(result);
-        response.status(200);
+      const ended = this._handleEtag(request, response,
+        result, this._etag);
 
-        const write =
-          Number(request.header('x-more')) === 1 &&
-          this._subscribe === true;
+      if (ended === true) {
+        next();
+        return;
+      }
 
-        if (write === true) {
-          response.write(result);
-        } else {
-          response.end(result);
-        }
+      response.status(200);
+
+      const write =
+        Number(request.header('x-more')) === 1 &&
+        this._subscribe === true;
+
+      if (write === true) {
+        response.write(result);
+      } else {
+        response.end(result);
       }
 
       next();
     });
+  }
+
+  _handleEtag(request, response, list, field) {
+    if (field === false) {
+      return false;
+    }
+
+    const base = list.map((item) => {
+      const etag = item[field];
+      delete item[field];
+      return etag;
+    }).join('');
+
+    const cancel =
+      this._etag === false ||
+      base === '';
+
+    if (cancel === true) {
+      return false;
+    }
+
+    const hash = '"' + md5(base) + '"';
+
+    response.header('Etag', hash);
+
+    if (request.header('If-None-Match') === hash) {
+      response
+        .status(304)
+        .end();
+
+      return true;
+    }
+
+    return false;
   }
 
   _handlePubsub(event) {

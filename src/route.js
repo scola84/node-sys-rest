@@ -5,7 +5,7 @@ export default class Route {
   constructor() {
     this._cache = true;
     this._config = null;
-    this._etag = true;
+    this._etag = '_etag';
     this._filter = (o) => o;
     this._format = null;
     this._publish = true;
@@ -35,6 +35,10 @@ export default class Route {
   etag(value = null) {
     if (value === null) {
       return this._etag;
+    }
+
+    if (value === false) {
+      this._etag = null;
     }
 
     this._etag = value;
@@ -242,30 +246,6 @@ export default class Route {
 
       callback(null, object);
     });
-  }
-
-  _addEtag(request, response, hash) {
-    const cancel =
-      this._etag === false ||
-      hash === null;
-
-    if (cancel === true) {
-      return false;
-    }
-
-    hash = '"' + hash + '"';
-
-    response.header('Etag', hash);
-
-    if (request.header('If-None-Match') === hash) {
-      response
-        .status(304)
-        .end();
-
-      return true;
-    }
-
-    return false;
   }
 
   _applyFilter(list) {

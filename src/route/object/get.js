@@ -41,31 +41,63 @@ export default class GetObjectRoute extends ReadObjectRoute {
       qo.prefix(prefix);
     }
 
-    qo.execute(values, (error, result, hash) => {
+    qo.execute(values, (error, result) => {
       if (error) {
         next(request.error('500 invalid_query ' + error));
         return;
       }
 
-      const ended = this._addEtag(request, response, hash);
+      result = this._applyFilter(result[0]);
 
-      if (ended === false) {
-        result = this._applyFilter(result[0]);
-        response.status(200);
+      const ended = this._handleEtag(request, response,
+        result, this._etag);
 
-        const write =
-          Number(request.header('x-more')) === 1 &&
-          this._subscribe === true;
+      if (ended === true) {
+        next();
+        return;
+      }
 
-        if (write === true) {
-          response.write(result);
-        } else {
-          response.end(result);
-        }
+      response.status(200);
+
+      const write =
+        Number(request.header('x-more')) === 1 &&
+        this._subscribe === true;
+
+      if (write === true) {
+        response.write(result);
+      } else {
+        response.end(result);
       }
 
       next();
     });
+  }
+
+  _handleEtag(request, response, object, field) {
+    if (field === false) {
+      return false;
+    }
+
+    const cancel =
+      this._etag === false ||
+      typeof object[field] === 'undefined';
+
+    if (cancel === true) {
+      return false;
+    }
+
+    response.header('Etag', object[field]);
+
+    if (request.header('If-None-Match') === object[field]) {
+      response
+        .status(304)
+        .end();
+
+      return true;
+    }
+
+    delete object[field];
+    return false;
   }
 
   _handlePubsub(event) {
