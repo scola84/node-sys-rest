@@ -48,11 +48,9 @@ export default class PostLinkRoute extends WriteLinkRoute {
       .format('insert')
       .link(path);
 
-    const data = Object.assign({}, request.data(), {
+    const values = this._applyFilter({
       [this._config.name + '_id']: params.oid
-    });
-
-    const values = this._applyFilter(data);
+    }, request.data());
 
     this._server
       .database()

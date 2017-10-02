@@ -155,16 +155,14 @@ export default class Route {
     const user = {};
 
     eachOf(fields, (field, index, eachCallback) => {
-      const query = this._format
+      const [query, values] = this._format
         .format('auth')
-        .user(field);
+        .user(field, id);
 
       const prefix = [
         'user',
         id
       ].join(':');
-
-      const values = [id];
 
       this._server
         .database()
@@ -198,16 +196,14 @@ export default class Route {
 
     const tasks = fields.slice(0, -1).map((field, index) => {
       return (ids, taskCallback) => {
-        const query = this._format
+        const [query, values] = this._format
           .format('auth')
-          .object(field, fields[index + 1]);
+          .object(field, fields[index + 1], ids);
 
         const prefix = [
           fields[0],
           id
         ].join(':');
-
-        const values = [ids];
 
         this._server
           .database()

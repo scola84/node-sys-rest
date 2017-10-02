@@ -12,21 +12,25 @@ const parts = {
 };
 
 export default class MysqlAuth {
-  object(left, right) {
-    return sprintf(
+  object(left, right, ids) {
+    const query = sprintf(
       parts.object,
       '%(db)s',
       right,
       left,
       left
     );
+
+    return [query, ids];
   }
 
-  user(field) {
-    return sprintf(
+  user(field, id) {
+    const query = sprintf(
       parts.user,
       '%(db)s',
       field
     );
+
+    return [query, id];
   }
 }

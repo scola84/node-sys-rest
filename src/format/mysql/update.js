@@ -1,14 +1,9 @@
 import sprintf from 'sprintf';
 
 const parts = {
-  link: {
-    complex: `
-      REPLACE INTO %s.link_%s_%s
-      SET ?`,
-    simple: `
-      REPLACE INTO %s.%s_%s
-      SET ?`
-  },
+  link: `
+    REPLACE INTO %s.link_%s_%s
+    SET ?`,
   object: {
     update: `
       UPDATE %s.%s`,
@@ -16,7 +11,9 @@ const parts = {
       SET ?`,
     where: {
       all: `
-        WHERE %s_id = ?`,
+        WHERE 1`,
+      id: `
+        AND %s_id = ?`,
       etag: `
         AND %s = ?`,
       filter: {
@@ -33,13 +30,34 @@ export default class MysqlUpdate {
     return result.affectedRows > 0;
   }
 
-  link(path, type) {
-    return sprintf(
-      parts.link[type],
+  complex(path, data) {
+    const query = sprintf(
+      parts.link,
       '%(db)s',
       path[0],
       path[1]
     );
+
+    return [query, data];
+  }
+
+  simple(path, data, ids, field, etag) {
+    const name = path.join('_');
+
+    let query = sprintf(parts.object.update, '%(db)s', name);
+    const values = [];
+
+    query += parts.object.set;
+    values.push(data);
+
+    query += parts.object.where.all;
+    query += sprintf(parts.object.where.id, path[0]);
+    values.push(ids.oid);
+
+    query += sprintf(parts.object.where.id, path[1]);
+    values.push(ids.cid);
+
+    return this._etag(query, values, data, field, etag);
   }
 
   object(name, data, oid, field = null, etag = null) {
@@ -49,18 +67,19 @@ export default class MysqlUpdate {
     query += parts.object.set;
     values.push(data);
 
-    query += sprintf(parts.object.where.all, name);
+    query += parts.object.where.all;
+    query += sprintf(parts.object.where.id, name);
     values.push(oid);
 
+    return this._etag(query, values, data, field, etag);
+  }
+
+  _etag(query, values, data, field, etag) {
     if (field !== null && etag !== null) {
       query += sprintf(parts.object.where.etag, field);
       values.push(etag);
     }
 
-    return this._etag(query, values, data, field);
-  }
-
-  _etag(query, values, data, field) {
     const filter = Object.keys(data).map((key) => {
       if (key === field) {
         return 1;

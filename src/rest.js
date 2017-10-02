@@ -111,7 +111,7 @@ export default class Rest {
   }
 
   _build(callback) {
-    const query = this._format
+    const [query] = this._format
       .format('config')
       .structure();
 

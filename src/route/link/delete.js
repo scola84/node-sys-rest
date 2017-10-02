@@ -16,6 +16,17 @@ export default class DeleteLinkRoute extends WriteLinkRoute {
   }
 
   _deleteLink(request, response, next) {
+    const child = request.param('child');
+
+    if (this._config.simple.indexOf(child) > -1) {
+      this._deleteSimple(request, response, next);
+      return;
+    }
+
+    this._deleteComplex(request, response, next);
+  }
+
+  _deleteSimple(request, response, next) {
     const params = request.params();
     const child = request.param('child');
 
@@ -24,25 +35,55 @@ export default class DeleteLinkRoute extends WriteLinkRoute {
       child
     ];
 
-    const type = this._config.simple.indexOf(child) > -1 ?
-      'simple' : 'complex';
+    const etag = request.header('If-Match');
 
-    const query = this._format
+    console.log(etag, path, params);
+
+    const [query, values] = this._format
       .format('delete')
-      .link(path, type);
+      .simple(path, params, this._etag, etag);
 
-    const values = [
-      params.oid,
-      params.cid
+    this._delete(query, values, etag, request, response, next);
+  }
+
+  _deleteComplex(request, response, next) {
+    const params = request.params();
+    const child = request.param('child');
+
+    const path = [
+      this._config.name,
+      child
     ];
 
+    const [query, values] = this._format
+      .format('delete')
+      .complex(path, params);
+
+    this._delete(query, values, null, request, response, next);
+  }
+
+  _delete(query, values, etag, request, response, next) {
     this._server
       .database()
       .connection(this._config.database)
       .query(query)
-      .execute(values, (error) => {
+      .execute(values, (error, result) => {
         if (error) {
           next(request.error('500 invalid_query ' + error));
+          return;
+        }
+
+        const changed = this._format
+          .format('delete')
+          .changed(result);
+
+        if (changed === false) {
+          if (etag === null) {
+            next(request.error('404 invalid_path'));
+            return;
+          }
+
+          next(request.error('412 invalid_version'));
           return;
         }
 

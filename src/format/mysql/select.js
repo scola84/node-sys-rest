@@ -50,13 +50,15 @@ const parts = {
 };
 
 export default class MysqlSelect {
-  object(name) {
-    return sprintf(
+  object(name, id) {
+    const query = sprintf(
       parts.object,
       '%(db)s',
       name,
       name
     );
+
+    return [query, id];
   }
 
   list(path, values, { f, o, l }, operator) {

@@ -33,29 +33,29 @@ export default class DeleteObjectRoute extends WriteObjectRoute {
         }
 
         const changed = this._format
-          .format('update')
+          .format('delete')
           .changed(result);
 
-        if (etag !== null && changed === false) {
-          response.status(412);
-        } else {
-          response.status(200);
+        if (changed === false) {
+          if (etag === null) {
+            next(request.error('404 invalid_path'));
+            return;
+          }
+
+          next(request.error('412 invalid_version'));
+          return;
         }
 
         response
-          .datum('changed', changed)
+          .status(200)
           .end();
 
         next();
       });
   }
 
-  _publishObject(request, response) {
-    const cancel =
-      this._publish === false ||
-      response.datum('changed') === false;
-
-    if (cancel === true) {
+  _publishObject(request) {
+    if (this._publish === false) {
       return;
     }
 

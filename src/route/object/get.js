@@ -21,16 +21,9 @@ export default class GetObjectRoute extends ReadObjectRoute {
   _selectObject(request, response, next) {
     const id = request.param('oid');
 
-    const query = this._format
+    const [query, values] = this._format
       .format('select')
-      .object(this._config.name);
-
-    const prefix = [
-      this._config.name,
-      id
-    ].join(':');
-
-    const values = [id];
+      .object(this._config.name, id);
 
     const qo = this._server
       .database()
@@ -38,7 +31,10 @@ export default class GetObjectRoute extends ReadObjectRoute {
       .query(query);
 
     if (this._cache === true) {
-      qo.prefix(prefix);
+      qo.prefix([
+        this._config.name,
+        id
+      ].join(':'));
     }
 
     qo.execute(values, (error, result) => {

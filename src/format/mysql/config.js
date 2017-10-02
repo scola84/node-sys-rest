@@ -7,6 +7,6 @@ const parts = {
 
 export default class MysqlAuth {
   structure() {
-    return parts.structure;
+    return [parts.structure];
   }
 }
