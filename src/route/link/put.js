@@ -9,6 +9,7 @@ export default class PutLinkRoute extends WriteLinkRoute {
         '/' + this._config.name + '/:oid/:child/:cid',
         (rq, rs, n) => this._validatePath(rq, rs, n),
         (rq, rs, n) => this._validateData(rq, rs, n),
+        (rq, rs, n) => this._checkUser(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
         (rq, rs, n) => this._authorizeUserChild(rq, rs, n),
@@ -114,7 +115,7 @@ export default class PutLinkRoute extends WriteLinkRoute {
       });
   }
 
-  _publishLink(request, response) {
+  _publishLink(request) {
     if (this._publish === false) {
       return;
     }
@@ -126,10 +127,9 @@ export default class PutLinkRoute extends WriteLinkRoute {
         event: this._config.name,
         data: {
           child: request.param('child'),
-          cid: response.header('x-cid'),
-          method: 'PUT',
-          oid: request.param('oid'),
-          uid: request.uid()
+          cid: request.param('cid'),
+          method: request.method(),
+          oid: request.param('oid')
         }
       });
   }

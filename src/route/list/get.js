@@ -1,4 +1,5 @@
 import { Validator } from '@scola/validator';
+import omit from 'lodash-es/omit';
 import md5 from 'crypto-js/md5';
 import Route from '../../route';
 
@@ -15,6 +16,7 @@ export default class GetListRoute extends Route {
       .get(
         '/' + this._config.name,
         (rq, rs, n) => this._validateQuery(rq, rs, n),
+        (rq, rs, n) => this._checkUser(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._prepareSelect(rq, rs, n),
         (rq, rs, n) => this._selectTotal(rq, rs, n),
@@ -81,9 +83,7 @@ export default class GetListRoute extends Route {
           return;
         }
 
-        response
-          .header('x-total', result[0].total);
-
+        response.datum('total', result[0].total);
         next();
       });
   }
@@ -106,16 +106,21 @@ export default class GetListRoute extends Route {
       qo.prefix(this._config.name);
     }
 
-    qo.execute(values, (error, result) => {
+    qo.execute(values, (error, data) => {
       if (error) {
         next(request.error('500 invalid_query ' + error));
         return;
       }
 
-      result = this._applyFilter(result);
+      data = this._applyFilter({
+        meta: {
+          total: response.datum('total')
+        },
+        data
+      });
 
       const ended = this._handleEtag(request, response,
-        result, this._etag);
+        data.data, this._etag);
 
       if (ended === true) {
         next();
@@ -125,13 +130,13 @@ export default class GetListRoute extends Route {
       response.status(200);
 
       const write =
-        Number(request.header('x-more')) === 1 &&
+        request.header('Connection') === 'keep-alive' &&
         this._subscribe === true;
 
       if (write === true) {
-        response.write(result);
+        response.write(data);
       } else {
-        response.end(result);
+        response.end(data);
       }
 
       next();
@@ -180,6 +185,6 @@ export default class GetListRoute extends Route {
     this._server
       .pubsub()
       .fanout('/' + this._config.name)
-      .publish(event);
+      .publish(omit(event, 'data'));
   }
 }

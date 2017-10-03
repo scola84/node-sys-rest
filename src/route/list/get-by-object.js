@@ -12,6 +12,7 @@ export default class GetListByObjectRoute extends GetListRoute {
         '/' + this._config.name + '/:oid/:child',
         (rq, rs, n) => this._validatePath(rq, rs, n),
         (rq, rs, n) => this._validateQuery(rq, rs, n),
+        (rq, rs, n) => this._checkUser(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUser(rq, rs, n),
         (rq, rs, n) => this._prepareSelect(rq, rs, n),

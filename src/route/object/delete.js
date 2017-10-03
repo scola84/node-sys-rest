@@ -7,6 +7,7 @@ export default class DeleteObjectRoute extends WriteObjectRoute {
       .delete(
         '/' + this._config.name + '/:oid',
         (rq, rs, n) => this._validatePath(rq, rs, n),
+        (rq, rs, n) => this._checkUser(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUser(rq, rs, n),
         (rq, rs, n) => this._deleteObject(rq, rs, n),
@@ -65,9 +66,8 @@ export default class DeleteObjectRoute extends WriteObjectRoute {
       .publish(this._rest.config('pubsub.path'), {
         event: this._config.name,
         data: {
-          method: 'DELETE',
-          oid: request.param('oid'),
-          uid: request.uid()
+          method: request.method(),
+          oid: request.param('oid')
         }
       });
   }

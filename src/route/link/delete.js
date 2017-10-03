@@ -7,6 +7,7 @@ export default class DeleteLinkRoute extends WriteLinkRoute {
       .delete(
         '/' + this._config.name + '/:oid/:child/:cid',
         (rq, rs, n) => this._validatePath(rq, rs, n),
+        (rq, rs, n) => this._checkUser(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
         (rq, rs, n) => this._authorizeUserChild(rq, rs, n),
@@ -108,9 +109,8 @@ export default class DeleteLinkRoute extends WriteLinkRoute {
         data: {
           child: request.param('child'),
           cid: request.param('cid'),
-          method: 'DELETE',
-          oid: request.param('oid'),
-          uid: request.uid()
+          method: request.method(),
+          oid: request.param('oid')
         }
       });
   }

@@ -7,6 +7,7 @@ export default class PostObjectRoute extends WriteObjectRoute {
       .post(
         '/' + this._config.name,
         (rq, rs, n) => this._validateData(rq, rs, n),
+        (rq, rs, n) => this._checkUser(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._insertObject(rq, rs, n),
         (rq, rs, n) => this._publishObject(rq, rs, n)
@@ -31,13 +32,19 @@ export default class PostObjectRoute extends WriteObjectRoute {
           return;
         }
 
-        const id = this._format
+        const oid = this._format
           .format('insert')
           .id(result);
 
+        const location = [
+          this._config.name,
+          oid
+        ].join('/');
+
         response
-          .header('x-oid', id)
           .status(201)
+          .header('Location', location)
+          .datum('oid', oid)
           .end();
 
         next();
@@ -56,9 +63,8 @@ export default class PostObjectRoute extends WriteObjectRoute {
         event: this._config.name,
         data: {
           data: request.data(),
-          method: 'POST',
-          oid: response.header('x-oid'),
-          uid: request.uid()
+          method: request.method(),
+          oid: response.datum('oid')
         }
       });
   }

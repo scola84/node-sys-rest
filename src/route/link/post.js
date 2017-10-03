@@ -12,6 +12,7 @@ export default class PostLinkRoute extends WriteLinkRoute {
         '/' + this._config.name + '/:oid/:child',
         (rq, rs, n) => this._validatePath(rq, rs, n),
         (rq, rs, n) => this._validateData(rq, rs, n),
+        (rq, rs, n) => this._checkUser(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
         (rq, rs, n) => this._insertLink(rq, rs, n),
@@ -62,13 +63,21 @@ export default class PostLinkRoute extends WriteLinkRoute {
           return;
         }
 
-        const id = this._format
+        const cid = this._format
           .format('insert')
           .id(result);
 
+        const location = [
+          this._config.name,
+          params.oid,
+          child,
+          cid
+        ].join('/');
+
         response
-          .header('x-cid', id)
           .status(201)
+          .header('Location', location)
+          .datum('cid', cid)
           .end();
 
         next();
@@ -87,10 +96,9 @@ export default class PostLinkRoute extends WriteLinkRoute {
         event: this._config.name,
         data: {
           child: request.param('child'),
-          cid: response.header('x-cid'),
-          method: 'POST',
-          oid: request.param('oid'),
-          uid: request.uid()
+          cid: response.datum('cid'),
+          method: request.method(),
+          oid: request.param('oid')
         }
       });
   }

@@ -7,6 +7,7 @@ export default class GetListByUserRoute extends GetListRoute {
       .get(
         '/my/' + this._config.name,
         (rq, rs, n) => this._validateQuery(rq, rs, n),
+        (rq, rs, n) => this._checkUser(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._prepareSelect(rq, rs, n),
         (rq, rs, n) => this._selectTotal(rq, rs, n),

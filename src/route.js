@@ -100,6 +100,17 @@ export default class Route {
       });
   }
 
+  _checkUser(request, response, next) {
+    const user = request.connection().user();
+
+    if (user === null) {
+      next(request.error('401 invalid_auth'));
+      return;
+    }
+
+    next();
+  }
+
   _authorizeRequest(user, name, oid, callback) {
     if (user.may(name + '.sudo') === true) {
       callback();
@@ -251,7 +262,7 @@ export default class Route {
   _subscribeRequest(request, response) {
     const cancel =
       this._subscribe === false ||
-      Number(request.header('x-more')) === 0;
+      request.header('Connection') === 'close';
 
     if (cancel === true) {
       return;

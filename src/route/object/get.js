@@ -7,6 +7,7 @@ export default class GetObjectRoute extends ReadObjectRoute {
       .get(
         '/' + this._config.name + '/:oid',
         (rq, rs, n) => this._validatePath(rq, rs, n),
+        (rq, rs, n) => this._checkUser(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUser(rq, rs, n),
         (rq, rs, n) => this._selectObject(rq, rs, n),
@@ -37,16 +38,23 @@ export default class GetObjectRoute extends ReadObjectRoute {
       ].join(':'));
     }
 
-    qo.execute(values, (error, result) => {
+    qo.execute(values, (error, data) => {
       if (error) {
         next(request.error('500 invalid_query ' + error));
         return;
       }
 
-      result = this._applyFilter(result[0]);
+      if (data.length === 0) {
+        next(request.error('404 invalid_path'));
+        return;
+      }
+
+      data = this._applyFilter({
+        data: data[0]
+      });
 
       const ended = this._handleEtag(request, response,
-        result, this._etag);
+        data.data, this._etag);
 
       if (ended === true) {
         next();
@@ -56,35 +64,35 @@ export default class GetObjectRoute extends ReadObjectRoute {
       response.status(200);
 
       const write =
-        Number(request.header('x-more')) === 1 &&
+        request.header('Connection') === 'keep-alive' &&
         this._subscribe === true;
 
       if (write === true) {
-        response.write(result);
+        response.write(data);
       } else {
-        response.end(result);
+        response.end(data);
       }
 
       next();
     });
   }
 
-  _handleEtag(request, response, object, field) {
+  _handleEtag(request, response, data, field) {
     if (field === false) {
       return false;
     }
 
     const cancel =
       this._etag === false ||
-      typeof object[field] === 'undefined';
+      typeof data[field] === 'undefined';
 
     if (cancel === true) {
       return false;
     }
 
-    response.header('Etag', object[field]);
+    response.header('Etag', data[field]);
 
-    if (request.header('If-None-Match') === object[field]) {
+    if (request.header('If-None-Match') === data[field]) {
       response
         .status(304)
         .end();
@@ -92,7 +100,7 @@ export default class GetObjectRoute extends ReadObjectRoute {
       return true;
     }
 
-    delete object[field];
+    delete data[field];
     return false;
   }
 

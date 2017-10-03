@@ -9,6 +9,7 @@ export default class PutObjectRoute extends WriteObjectRoute {
         '/' + this._config.name + '/:oid',
         (rq, rs, n) => this._validatePath(rq, rs, n),
         (rq, rs, n) => this._validateData(rq, rs, n),
+        (rq, rs, n) => this._checkUser(rq, rs, n),
         (rq, rs, n) => this._authorizeRole(rq, rs, n),
         (rq, rs, n) => this._authorizeUser(rq, rs, n),
         (rq, rs, n) => this._updateObject(rq, rs, n),
@@ -75,9 +76,8 @@ export default class PutObjectRoute extends WriteObjectRoute {
         event: this._config.name,
         data: {
           data: request.data(),
-          method: 'PUT',
-          oid: request.param('oid'),
-          uid: request.uid()
+          method: request.method(),
+          oid: request.param('oid')
         }
       });
   }
