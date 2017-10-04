@@ -10,13 +10,23 @@ export default class PostLinkRoute extends WriteLinkRoute {
       .router()
       .post(
         '/' + this._config.name + '/:oid/:child',
-        (rq, rs, n) => this._validatePath(rq, rs, n),
-        (rq, rs, n) => this._validateData(rq, rs, n),
-        (rq, rs, n) => this._checkUser(rq, rs, n),
-        (rq, rs, n) => this._authorizeRole(rq, rs, n),
-        (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
-        (rq, rs, n) => this._insertLink(rq, rs, n),
-        (rq, rs, n) => this._publishLink(rq, rs, n)
+        ...this._handlers({
+          validate: [
+            (rq, rs, n) => this._validatePath(rq, rs, n),
+            (rq, rs, n) => this._validateData(rq, rs, n)
+          ],
+          authorize: [
+            (rq, rs, n) => this._checkUser(rq, rs, n),
+            (rq, rs, n) => this._authorizeRole(rq, rs, n),
+            (rq, rs, n) => this._authorizeUserObject(rq, rs, n)
+          ],
+          execute: [
+            (rq, rs, n) => this._insertLink(rq, rs, n)
+          ],
+          publish: [
+            (rq, rs, n) => this._publishLink(rq, rs, n)
+          ]
+        })
       )
       .extract();
   }
@@ -81,25 +91,6 @@ export default class PostLinkRoute extends WriteLinkRoute {
           .end();
 
         next();
-      });
-  }
-
-  _publishLink(request, response) {
-    if (this._publish === false) {
-      return;
-    }
-
-    this._server
-      .pubsub()
-      .client()
-      .publish(this._rest.config('pubsub.path'), {
-        event: this._config.name,
-        data: {
-          child: request.param('child'),
-          cid: response.datum('cid'),
-          method: request.method(),
-          oid: request.param('oid')
-        }
       });
   }
 }

@@ -66,4 +66,21 @@ export default class WriteLinkRoute extends Route {
       next();
     });
   }
+
+  _publishLink(request, response, next) {
+    this._server
+      .pubsub()
+      .client()
+      .publish(this._rest.config('pubsub.path'), {
+        event: this._config.name,
+        data: {
+          child: request.param('child'),
+          cid: response.datum('cid'),
+          method: request.method(),
+          oid: request.param('oid')
+        }
+      });
+
+    next();
+  }
 }

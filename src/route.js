@@ -3,6 +3,7 @@ import waterfall from 'async/waterfall';
 
 export default class Route {
   constructor() {
+    this._authorize = true;
     this._cache = true;
     this._config = null;
     this._etag = '_etag';
@@ -12,6 +13,16 @@ export default class Route {
     this._rest = null;
     this._server = null;
     this._subscribe = true;
+    this._validate = true;
+  }
+
+  authorize(value = null) {
+    if (value === null) {
+      return this._authorize;
+    }
+
+    this._authorize = value;
+    return this;
   }
 
   cache(value = null) {
@@ -88,6 +99,42 @@ export default class Route {
 
     this._subscribe = value;
     return this;
+  }
+
+  validate(value = null) {
+    if (value === null) {
+      return this._validate;
+    }
+
+    this._validate = value;
+    return this;
+  }
+
+  _handlers(available) {
+    let enabled = [];
+
+    if (this._validate === true && available.validate) {
+      enabled = enabled.concat(available.validate);
+    }
+
+    if (this._authorize === true && available.authorize) {
+      enabled = enabled.concat(available.authorize);
+    }
+
+    if (available.execute) {
+      enabled = enabled.concat(available.execute);
+    }
+
+    if (this._subscribe === true && available.subscribe) {
+      enabled = enabled.concat(available.subscribe);
+      this._bindPubsub();
+    }
+
+    if (this._publish === true && available.publish) {
+      enabled = enabled.concat(available.publish);
+    }
+
+    return enabled;
   }
 
   _bindPubsub() {
@@ -260,11 +307,7 @@ export default class Route {
   }
 
   _subscribeRequest(request, response) {
-    const cancel =
-      this._subscribe === false ||
-      request.header('Connection') === 'close';
-
-    if (cancel === true) {
+    if (request.header('Connection') === 'close') {
       return;
     }
 

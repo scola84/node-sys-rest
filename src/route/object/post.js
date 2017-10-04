@@ -6,11 +6,21 @@ export default class PostObjectRoute extends WriteObjectRoute {
       .router()
       .post(
         '/' + this._config.name,
-        (rq, rs, n) => this._validateData(rq, rs, n),
-        (rq, rs, n) => this._checkUser(rq, rs, n),
-        (rq, rs, n) => this._authorizeRole(rq, rs, n),
-        (rq, rs, n) => this._insertObject(rq, rs, n),
-        (rq, rs, n) => this._publishObject(rq, rs, n)
+        ...this._handlers({
+          validate: [
+            (rq, rs, n) => this._validateData(rq, rs, n)
+          ],
+          authorize: [
+            (rq, rs, n) => this._checkUser(rq, rs, n),
+            (rq, rs, n) => this._authorizeRole(rq, rs, n)
+          ],
+          execute: [
+            (rq, rs, n) => this._insertObject(rq, rs, n)
+          ],
+          publish: [
+            (rq, rs, n) => this._publishObject(rq, rs, n)
+          ]
+        })
       )
       .extract();
   }
@@ -48,24 +58,6 @@ export default class PostObjectRoute extends WriteObjectRoute {
           .end();
 
         next();
-      });
-  }
-
-  _publishObject(request, response) {
-    if (this._publish === false) {
-      return;
-    }
-
-    this._server
-      .pubsub()
-      .client()
-      .publish(this._rest.config('pubsub.path'), {
-        event: this._config.name,
-        data: {
-          data: request.data(),
-          method: request.method(),
-          oid: response.datum('oid')
-        }
       });
   }
 }

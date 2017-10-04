@@ -7,14 +7,24 @@ export default class PutLinkRoute extends WriteLinkRoute {
       .router()
       .put(
         '/' + this._config.name + '/:oid/:child/:cid',
-        (rq, rs, n) => this._validatePath(rq, rs, n),
-        (rq, rs, n) => this._validateData(rq, rs, n),
-        (rq, rs, n) => this._checkUser(rq, rs, n),
-        (rq, rs, n) => this._authorizeRole(rq, rs, n),
-        (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
-        (rq, rs, n) => this._authorizeUserChild(rq, rs, n),
-        (rq, rs, n) => this._updateLink(rq, rs, n),
-        (rq, rs, n) => this._publishLink(rq, rs, n)
+        ...this._handlers({
+          validate: [
+            (rq, rs, n) => this._validatePath(rq, rs, n),
+            (rq, rs, n) => this._validateData(rq, rs, n)
+          ],
+          authorize: [
+            (rq, rs, n) => this._checkUser(rq, rs, n),
+            (rq, rs, n) => this._authorizeRole(rq, rs, n),
+            (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
+            (rq, rs, n) => this._authorizeUserChild(rq, rs, n)
+          ],
+          execute: [
+            (rq, rs, n) => this._updateLink(rq, rs, n)
+          ],
+          publish: [
+            (rq, rs, n) => this._publishLink(rq, rs, n)
+          ]
+        })
       )
       .extract();
   }
@@ -109,28 +119,10 @@ export default class PutLinkRoute extends WriteLinkRoute {
 
         response
           .status(200)
+          .datum('cid', request.param('cid'))
           .end();
 
         next();
-      });
-  }
-
-  _publishLink(request) {
-    if (this._publish === false) {
-      return;
-    }
-
-    this._server
-      .pubsub()
-      .client()
-      .publish(this._rest.config('pubsub.path'), {
-        event: this._config.name,
-        data: {
-          child: request.param('child'),
-          cid: request.param('cid'),
-          method: request.method(),
-          oid: request.param('oid')
-        }
       });
   }
 }

@@ -11,20 +11,26 @@ export default class GetListByUserParentRoute extends GetListByUserRoute {
       .router()
       .get(
         '/my/:parent/' + this._config.name,
-        (rq, rs, n) => this._validatePath(rq, rs, n),
-        (rq, rs, n) => this._validateQuery(rq, rs, n),
-        (rq, rs, n) => this._checkUser(rq, rs, n),
-        (rq, rs, n) => this._authorizeRole(rq, rs, n),
-        (rq, rs, n) => this._authorizeUser(rq, rs, n),
-        (rq, rs, n) => this._prepareSelect(rq, rs, n),
-        (rq, rs, n) => this._selectTotal(rq, rs, n),
-        (rq, rs, n) => this._selectList(rq, rs, n),
-        (rq, rs, n) => this._subscribeRequest(rq, rs, n)
+        ...this._handlers({
+          validate: [
+            (rq, rs, n) => this._validatePath(rq, rs, n),
+            (rq, rs, n) => this._validateQuery(rq, rs, n)
+          ],
+          authorize: [
+            (rq, rs, n) => this._checkUser(rq, rs, n),
+            (rq, rs, n) => this._authorizeRole(rq, rs, n),
+            (rq, rs, n) => this._authorizeUser(rq, rs, n)
+          ],
+          execute: [
+            (rq, rs, n) => this._prepareSelect(rq, rs, n),
+            (rq, rs, n) => this._selectTotal(rq, rs, n),
+            (rq, rs, n) => this._selectList(rq, rs, n)
+          ],
+          subscribe: [
+            (rq, rs, n) => this._subscribeRequest(rq, rs, n)
+          ]
+        })
       );
-
-    if (this._subscribe === true) {
-      this._bindPubsub();
-    }
   }
 
   _authorizeUser(request, response, next) {

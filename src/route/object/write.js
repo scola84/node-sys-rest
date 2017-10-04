@@ -15,4 +15,20 @@ export default class WriteObjectRoute extends Route {
 
     next();
   }
+
+  _publishObject(request, response, next) {
+    this._server
+      .pubsub()
+      .client()
+      .publish(this._rest.config('pubsub.path'), {
+        event: this._config.name,
+        data: {
+          data: request.data(),
+          method: request.method(),
+          oid: response.datum('oid')
+        }
+      });
+
+    next();
+  }
 }

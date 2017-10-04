@@ -6,17 +6,23 @@ export default class GetObjectRoute extends ReadObjectRoute {
       .router()
       .get(
         '/' + this._config.name + '/:oid',
-        (rq, rs, n) => this._validatePath(rq, rs, n),
-        (rq, rs, n) => this._checkUser(rq, rs, n),
-        (rq, rs, n) => this._authorizeRole(rq, rs, n),
-        (rq, rs, n) => this._authorizeUser(rq, rs, n),
-        (rq, rs, n) => this._selectObject(rq, rs, n),
-        (rq, rs, n) => this._subscribeRequest(rq, rs, n)
+        ...this._handlers({
+          validate: [
+            (rq, rs, n) => this._validatePath(rq, rs, n)
+          ],
+          authorize: [
+            (rq, rs, n) => this._checkUser(rq, rs, n),
+            (rq, rs, n) => this._authorizeRole(rq, rs, n),
+            (rq, rs, n) => this._authorizeUser(rq, rs, n)
+          ],
+          execute: [
+            (rq, rs, n) => this._selectObject(rq, rs, n)
+          ],
+          subscribe: [
+            (rq, rs, n) => this._subscribeRequest(rq, rs, n)
+          ]
+        })
       );
-
-    if (this._subscribe === true) {
-      this._bindPubsub();
-    }
   }
 
   _selectObject(request, response, next) {
@@ -53,19 +59,21 @@ export default class GetObjectRoute extends ReadObjectRoute {
         data: data[0]
       });
 
-      const ended = this._handleEtag(request, response,
-        data.data, this._etag);
-
-      if (ended === true) {
-        next();
-        return;
-      }
-
-      response.status(200);
+      let status = 200;
 
       const write =
         request.header('Connection') === 'keep-alive' &&
         this._subscribe === true;
+
+      const match = this._handleEtag(request, response,
+        data.data, this._etag);
+
+      if (match === true) {
+        status = 304;
+        data = '';
+      }
+
+      response.status(status);
 
       if (write === true) {
         response.write(data);
@@ -93,10 +101,6 @@ export default class GetObjectRoute extends ReadObjectRoute {
     response.header('Etag', data[field]);
 
     if (request.header('If-None-Match') === data[field]) {
-      response
-        .status(304)
-        .end();
-
       return true;
     }
 

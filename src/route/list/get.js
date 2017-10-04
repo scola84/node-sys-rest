@@ -15,18 +15,24 @@ export default class GetListRoute extends Route {
       .router()
       .get(
         '/' + this._config.name,
-        (rq, rs, n) => this._validateQuery(rq, rs, n),
-        (rq, rs, n) => this._checkUser(rq, rs, n),
-        (rq, rs, n) => this._authorizeRole(rq, rs, n),
-        (rq, rs, n) => this._prepareSelect(rq, rs, n),
-        (rq, rs, n) => this._selectTotal(rq, rs, n),
-        (rq, rs, n) => this._selectList(rq, rs, n),
-        (rq, rs, n) => this._subscribeRequest(rq, rs, n)
+        ...this._handlers({
+          validate: [
+            (rq, rs, n) => this._validateQuery(rq, rs, n)
+          ],
+          authorize: [
+            (rq, rs, n) => this._checkUser(rq, rs, n),
+            (rq, rs, n) => this._authorizeRole(rq, rs, n)
+          ],
+          execute: [
+            (rq, rs, n) => this._prepareSelect(rq, rs, n),
+            (rq, rs, n) => this._selectTotal(rq, rs, n),
+            (rq, rs, n) => this._selectList(rq, rs, n)
+          ],
+          subscribe: [
+            (rq, rs, n) => this._subscribeRequest(rq, rs, n)
+          ]
+        })
       );
-
-    if (this._subscribe === true) {
-      this._bindPubsub();
-    }
   }
 
   _validateQuery(request, response, next) {
@@ -119,19 +125,21 @@ export default class GetListRoute extends Route {
         data
       });
 
-      const ended = this._handleEtag(request, response,
-        data.data, this._etag);
-
-      if (ended === true) {
-        next();
-        return;
-      }
-
-      response.status(200);
+      let status = 200;
 
       const write =
         request.header('Connection') === 'keep-alive' &&
         this._subscribe === true;
+
+      const match = this._handleEtag(request, response,
+        data.data, this._etag);
+
+      if (match === true) {
+        status = 304;
+        data = '';
+      }
+
+      response.status(status);
 
       if (write === true) {
         response.write(data);
@@ -167,10 +175,6 @@ export default class GetListRoute extends Route {
     response.header('Etag', hash);
 
     if (request.header('If-None-Match') === hash) {
-      response
-        .status(304)
-        .end();
-
       return true;
     }
 
