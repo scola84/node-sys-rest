@@ -51,6 +51,8 @@ export default class PostObjectRoute extends WriteObjectRoute {
           oid
         ].join('/');
 
+        request.data(values);
+
         response
           .status(201)
           .header('Location', location)

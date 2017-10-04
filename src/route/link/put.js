@@ -68,7 +68,19 @@ export default class PutLinkRoute extends WriteLinkRoute {
       .format('update')
       .simple(path, data, params, this._etag, etag);
 
-    this._update(query, values, etag, request, response, next);
+    this._update(query, values, etag, request, response, (error) => {
+      if (error) {
+        next(error);
+        return;
+      }
+
+      if (this._etag) {
+        delete data[this._etag];
+      }
+
+      request.data(data);
+      next();
+    });
   }
 
   _updateComplex(request, response, next) {
@@ -92,14 +104,14 @@ export default class PutLinkRoute extends WriteLinkRoute {
     this._update(query, values, null, request, response, next);
   }
 
-  _update(query, values, etag, request, response, next) {
+  _update(query, values, etag, request, response, callback) {
     this._server
       .database()
       .connection(this._config.database)
       .query(query)
       .execute(values, (error, result) => {
         if (error) {
-          next(request.error('500 invalid_query ' + error));
+          callback(request.error('500 invalid_query ' + error));
           return;
         }
 
@@ -109,11 +121,11 @@ export default class PutLinkRoute extends WriteLinkRoute {
 
         if (changed === false) {
           if (etag === null) {
-            next(request.error('404 invalid_path'));
+            callback(request.error('404 invalid_path'));
             return;
           }
 
-          next(request.error('412 invalid_version'));
+          callback(request.error('412 invalid_version'));
           return;
         }
 
@@ -122,7 +134,7 @@ export default class PutLinkRoute extends WriteLinkRoute {
           .datum('cid', request.param('cid'))
           .end();
 
-        next();
+        callback();
       });
   }
 }

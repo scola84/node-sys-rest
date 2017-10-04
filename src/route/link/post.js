@@ -84,6 +84,8 @@ export default class PostLinkRoute extends WriteLinkRoute {
           cid
         ].join('/');
 
+        request.data(values);
+
         response
           .status(201)
           .header('Location', location)

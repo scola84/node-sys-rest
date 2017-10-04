@@ -76,6 +76,7 @@ export default class WriteLinkRoute extends Route {
         data: {
           child: request.param('child'),
           cid: response.datum('cid'),
+          data: request.data(),
           method: request.method(),
           oid: request.param('oid')
         }

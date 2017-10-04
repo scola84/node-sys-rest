@@ -66,6 +66,12 @@ export default class PutObjectRoute extends WriteObjectRoute {
           return;
         }
 
+        if (this._etag) {
+          delete data[this._etag];
+        }
+
+        request.data(data);
+
         response
           .status(200)
           .datum('oid', request.param('oid'))
