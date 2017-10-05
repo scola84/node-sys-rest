@@ -75,6 +75,10 @@ export default class GetObjectRoute extends ReadObjectRoute {
 
       response.status(status);
 
+      if (request.method() === 'HEAD') {
+        response.encoder().option('push', false);
+      }
+
       if (write === true) {
         response.write(data);
       } else {

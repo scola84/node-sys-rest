@@ -139,6 +139,10 @@ export default class GetListRoute extends Route {
 
       response.status(status);
 
+      if (request.method() === 'HEAD') {
+        response.encoder().option('push', false);
+      }
+
       if (write === true) {
         response.write(data);
       } else {
