@@ -1,5 +1,10 @@
 import get from 'lodash-es/get';
+import { Validator } from '@scola/validator';
 import MysqlFormat from './format/mysql';
+
+const validator = new Validator();
+validator.field('oid').cast().integer();
+validator.field('cid').cast().integer();
 
 const format = {
   mysql: MysqlFormat
@@ -13,6 +18,7 @@ export default class Rest {
     this._routes = {};
     this._server = null;
     this._structure = {};
+    this._validator = validator;
   }
 
   config(value = null) {
@@ -43,6 +49,15 @@ export default class Rest {
     }
 
     this._server = value;
+    return this;
+  }
+
+  validator(value = null) {
+    if (value === null) {
+      return this._validator;
+    }
+
+    this._validator = value;
     return this;
   }
 

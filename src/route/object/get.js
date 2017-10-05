@@ -111,11 +111,11 @@ export default class GetObjectRoute extends ReadObjectRoute {
   _handlePubsub(event) {
     this._server
       .cache()
-      .invalidate(this._config.name + ':' + event.oid);
+      .invalidate(this._config.name + ':' + event.meta.oid);
 
     this._server
       .pubsub()
-      .fanout('/' + this._config.name + '/' + event.oid)
+      .fanout('/' + this._config.name + '/' + event.meta.oid)
       .publish(event);
   }
 }

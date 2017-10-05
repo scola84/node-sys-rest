@@ -1,9 +1,4 @@
-import { Validator } from '@scola/validator';
 import Route from '../../route';
-
-const validator = new Validator();
-validator.field('oid').cast().integer();
-validator.field('cid').cast().integer();
 
 export default class WriteLinkRoute extends Route {
   _validatePath(request, response, next) {
@@ -18,7 +13,27 @@ export default class WriteLinkRoute extends Route {
       return;
     }
 
-    validator.validate(request.params(), next);
+    this._rest
+      .validator()
+      .validate(request.params(), next);
+  }
+
+  _validateData(request, response, next) {
+    const child = request.param('child');
+
+    if (this._validator === null) {
+      next();
+      return;
+    }
+
+    const validator = this._validator[child];
+
+    if (typeof validator === 'undefined') {
+      next();
+      return;
+    }
+
+    validator.validate(request.data(), next);
   }
 
   _authorizeRole(request, response, next) {
@@ -74,11 +89,14 @@ export default class WriteLinkRoute extends Route {
       .publish(this._rest.config('pubsub.path'), {
         event: this._config.name,
         data: {
-          child: request.param('child'),
-          cid: response.datum('cid'),
-          data: request.data(),
-          method: request.method(),
-          oid: request.param('oid')
+          meta: {
+            child: request.param('child'),
+            cid: response.datum('cid'),
+            method: request.method(),
+            oid: request.param('oid'),
+            publish: true
+          },
+          data: request.data()
         }
       });
 

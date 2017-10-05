@@ -1,12 +1,10 @@
-import { Validator } from '@scola/validator';
 import Route from '../../route';
-
-const validator = new Validator();
-validator.field('oid').cast().integer();
 
 export default class ObjectRoute extends Route {
   _validatePath(request, response, next) {
-    validator.validate(request.params(), next);
+    this._rest
+      .validator()
+      .validate(request.params(), next);
   }
 
   _authorizeUser(request, response, next) {

@@ -1,13 +1,6 @@
-import { Validator } from '@scola/validator';
 import omit from 'lodash-es/omit';
 import md5 from 'crypto-js/md5';
 import Route from '../../route';
-
-const validator = new Validator();
-
-validator.field('l.cnt').cast().default(10).integer();
-validator.field('l.off').cast().default(0).integer();
-validator.strict();
 
 export default class GetListRoute extends Route {
   start() {
@@ -36,7 +29,12 @@ export default class GetListRoute extends Route {
   }
 
   _validateQuery(request, response, next) {
-    validator.validate(request.query(), next);
+    if (this._validator !== null) {
+      this._validator.validate(request.query(), next);
+      return;
+    }
+
+    next();
   }
 
   _validatePath(request, response, next) {

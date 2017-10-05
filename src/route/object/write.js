@@ -2,6 +2,11 @@ import Route from './route';
 
 export default class WriteObjectRoute extends Route {
   _validateData(request, response, next) {
+    if (this._validator !== null) {
+      this._validator.validate(request.data(), next);
+      return;
+    }
+
     next();
   }
 
@@ -23,9 +28,12 @@ export default class WriteObjectRoute extends Route {
       .publish(this._rest.config('pubsub.path'), {
         event: this._config.name,
         data: {
-          data: request.data(),
-          method: request.method(),
-          oid: response.datum('oid')
+          meta: {
+            method: request.method(),
+            oid: response.datum('oid'),
+            publish: true
+          },
+          data: request.data()
         }
       });
 

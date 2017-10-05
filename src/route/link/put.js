@@ -29,10 +29,6 @@ export default class PutLinkRoute extends WriteLinkRoute {
       .extract();
   }
 
-  _validateData(request, response, next) {
-    next();
-  }
-
   _updateLink(request, response, next) {
     const child = request.param('child');
 

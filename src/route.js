@@ -14,6 +14,7 @@ export default class Route {
     this._server = null;
     this._subscribe = true;
     this._validate = true;
+    this._validator = null;
   }
 
   authorize(value = null) {
@@ -107,6 +108,15 @@ export default class Route {
     }
 
     this._validate = value;
+    return this;
+  }
+
+  validator(value = null) {
+    if (value === null) {
+      return this._validator;
+    }
+
+    this._validator = value;
     return this;
   }
 

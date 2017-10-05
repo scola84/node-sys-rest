@@ -1,8 +1,4 @@
-import { Validator } from '@scola/validator';
 import GetListRoute from './get';
-
-const validator = new Validator();
-validator.field('oid').cast().integer();
 
 export default class GetListByObjectRoute extends GetListRoute {
   start() {
@@ -44,7 +40,9 @@ export default class GetListByObjectRoute extends GetListRoute {
       return;
     }
 
-    validator.validate(request.params(), next);
+    this._rest
+      .validator()
+      .validate(request.params(), next);
   }
 
   _authorizeRole(request, response, next) {

@@ -1,8 +1,4 @@
-import { Validator } from '@scola/validator';
 import WriteLinkRoute from './write';
-
-const validator = new Validator();
-validator.field('oid').cast().integer();
 
 export default class PostLinkRoute extends WriteLinkRoute {
   start() {
@@ -39,11 +35,9 @@ export default class PostLinkRoute extends WriteLinkRoute {
       return;
     }
 
-    validator.validate(request.params(), next);
-  }
-
-  _validateData(request, response, next) {
-    next();
+    this._rest
+      .validator()
+      .validate(request.params(), next);
   }
 
   _insertLink(request, response, next) {
