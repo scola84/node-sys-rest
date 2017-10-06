@@ -1,13 +1,13 @@
-import Route from './route';
+import ObjectRoute from './route';
 
-export default class WriteObjectRoute extends Route {
+export default class WriteObjectRoute extends ObjectRoute {
   _validateData(request, response, next) {
-    if (this._validator !== null) {
-      this._validator.validate(request.data(), next);
+    if (this._validator === null) {
+      next();
       return;
     }
 
-    next();
+    this._validator.validate(request.data(), next);
   }
 
   _authorizeRole(request, response, next) {

@@ -227,28 +227,30 @@ export default class Route {
         .format('auth')
         .user(field, id);
 
-      const prefix = [
-        'user',
-        id
-      ].join(':');
-
-      this._server
+      const qo = this._server
         .database()
         .connection(this._config.database)
-        .query(query)
-        .prefix(prefix)
-        .execute(values, (error, result) => {
-          if (error) {
-            eachCallback(error);
-            return;
-          }
+        .query(query);
 
-          user[field] = result.map((value) => {
-            return value[field + '_id'];
-          });
+      if (this._cache === true) {
+        qo.prefix([
+          'user',
+          id
+        ].join(':'));
+      }
 
-          eachCallback();
+      qo.execute(values, (error, result) => {
+        if (error) {
+          eachCallback(error);
+          return;
+        }
+
+        user[field] = result.map((value) => {
+          return value[field + '_id'];
         });
+
+        eachCallback();
+      });
     }, (error) => {
       if (error) {
         callback(error);
@@ -268,33 +270,35 @@ export default class Route {
           .format('auth')
           .object(field, fields[index + 1], ids);
 
-        const prefix = [
-          fields[0],
-          id
-        ].join(':');
-
-        this._server
+        const qo = this._server
           .database()
           .connection(this._config.database)
-          .query(query)
-          .prefix(prefix)
-          .execute(values, (error, result) => {
-            if (error) {
-              taskCallback(error);
-              return;
-            }
+          .query(query);
 
-            if (result.length === 0) {
-              taskCallback(true);
-              return;
-            }
+        if (this._cache === true) {
+          qo.prefix([
+            fields[0],
+            id
+          ].join(':'));
+        }
 
-            object[fields[index + 1]] = result.map((value) => {
-              return value[fields[index + 1] + '_id'];
-            });
+        qo.execute(values, (error, result) => {
+          if (error) {
+            taskCallback(error);
+            return;
+          }
 
-            taskCallback(null, object[fields[index + 1]]);
+          if (result.length === 0) {
+            taskCallback(true);
+            return;
+          }
+
+          object[fields[index + 1]] = result.map((value) => {
+            return value[fields[index + 1] + '_id'];
           });
+
+          taskCallback(null, object[fields[index + 1]]);
+        });
       };
     });
 

@@ -1,23 +1,6 @@
-import Route from '../../route';
+import Route from './route';
 
 export default class WriteLinkRoute extends Route {
-  _validatePath(request, response, next) {
-    const child = request.param('child');
-
-    const isChild =
-      this._config.complex.indexOf(child) > -1 ||
-      this._config.simple.indexOf(child) > -1;
-
-    if (isChild === false) {
-      next(request.error('404 invalid_path'));
-      return;
-    }
-
-    this._rest
-      .validator()
-      .validate(request.params(), next);
-  }
-
   _validateData(request, response, next) {
     const child = request.param('child');
 
@@ -47,42 +30,20 @@ export default class WriteLinkRoute extends Route {
     next();
   }
 
-  _authorizeUserObject(request, response, next) {
-    const user = request.connection().user();
-    const name = this._config.name;
-    const id = request.param('oid');
+  _publishLink(request, response, next) {
+    const child = request.param('child');
 
-    this._authorizeRequest(user, name, id, (error) => {
-      if (error) {
-        next(request.error('403 invalid_auth'));
-        return;
-      }
-
-      next();
-    });
-  }
-
-  _authorizeUserChild(request, response, next) {
-    const user = request.connection().user();
-    const name = request.param('child');
-    const id = request.param('cid');
-
-    if (this._config.simple.indexOf(name) > -1) {
-      next();
-      return;
+    if (this._config.simple.indexOf(child) > -1) {
+      this._publishObject(request, response, next);
     }
 
-    this._authorizeRequest(user, name, id, (error) => {
-      if (error) {
-        next(request.error('403 invalid_auth'));
-        return;
-      }
-
-      next();
-    });
+    if (this._config.complex.indexOf(child) > -1) {
+      this._publishParent(request, response, next);
+      this._publishChild(request, response, next);
+    }
   }
 
-  _publishLink(request, response, next) {
+  _publishObject(request, response, next) {
     this._server
       .pubsub()
       .client()
@@ -97,6 +58,44 @@ export default class WriteLinkRoute extends Route {
             publish: true
           },
           data: request.data()
+        }
+      });
+
+    next();
+  }
+
+  _publishParent(request, response, next) {
+    this._server
+      .pubsub()
+      .client()
+      .publish(this._rest.config('pubsub.path'), {
+        event: this._config.name,
+        data: {
+          meta: {
+            child: request.param('child'),
+            method: request.method(),
+            oid: request.param('oid'),
+            publish: true
+          }
+        }
+      });
+
+    next();
+  }
+
+  _publishChild(request, response, next) {
+    this._server
+      .pubsub()
+      .client()
+      .publish(this._rest.config('pubsub.path'), {
+        event: request.param('child'),
+        data: {
+          meta: {
+            child: this._config.name,
+            method: request.method(),
+            oid: response.datum('cid'),
+            publish: true
+          }
         }
       });
 

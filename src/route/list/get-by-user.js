@@ -1,3 +1,4 @@
+import omit from 'lodash-es/omit';
 import GetListRoute from './get';
 
 export default class GetListByUserRoute extends GetListRoute {
@@ -51,13 +52,24 @@ export default class GetListByUserRoute extends GetListRoute {
   }
 
   _handlePubsub(event) {
+    const cachePath = [
+      '',
+      this._config.name
+    ].join('/');
+
+    const pubsubPath = [
+      '',
+      'my',
+      this._config.name
+    ].join('/');
+
     this._server
       .cache()
-      .invalidate(this._config.name);
+      .invalidate(cachePath);
 
     this._server
       .pubsub()
-      .fanout('/my/' + this._config.name)
-      .publish(event);
+      .fanout(pubsubPath)
+      .publish(omit(event, 'data'));
   }
 }

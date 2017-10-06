@@ -1,11 +1,11 @@
-import ObjectRoute from './route';
+import LinkRoute from './route';
 
-export default class GetObjectRoute extends ObjectRoute {
+export default class GetLinkRoute extends LinkRoute {
   start() {
     this._server
       .router()
       .get(
-        '/' + this._config.name + '/:oid',
+        '/' + this._config.name + '/:oid/:child/:cid',
         ...this._handlers({
           validate: [
             (rq, rs, n) => this._validatePath(rq, rs, n)
@@ -13,16 +13,36 @@ export default class GetObjectRoute extends ObjectRoute {
           authorize: [
             (rq, rs, n) => this._checkUser(rq, rs, n),
             (rq, rs, n) => this._authorizeRole(rq, rs, n),
-            (rq, rs, n) => this._authorizeUser(rq, rs, n)
+            (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
+            (rq, rs, n) => this._authorizeUserChild(rq, rs, n)
           ],
           execute: [
-            (rq, rs, n) => this._selectObject(rq, rs, n)
+            (rq, rs, n) => this._selectLink(rq, rs, n)
           ],
           subscribe: [
             (rq, rs, n) => this._subscribeRequest(rq, rs, n)
           ]
         })
       );
+  }
+
+  _validatePath(request, response, next) {
+    const child = request.param('child');
+
+    if (this._config.complex.indexOf(child) > -1 === true) {
+      request.allow(request.method(), false);
+      next(request.error('405 invalid_method'));
+      return;
+    }
+
+    if (this._config.simple.indexOf(child) > -1 === false) {
+      next(request.error('404 invalid_path'));
+      return;
+    }
+
+    this._rest
+      .validator()
+      .validate(request.params(), next);
   }
 
   _authorizeRole(request, response, next) {
@@ -36,12 +56,18 @@ export default class GetObjectRoute extends ObjectRoute {
     next();
   }
 
-  _selectObject(request, response, next) {
-    const id = request.param('oid');
+  _selectLink(request, response, next) {
+    const params = request.params();
+    const child = request.param('child');
+
+    const path = [
+      this._config.name,
+      child
+    ];
 
     const [query, values] = this._format
       .format('select')
-      .object(this._config.name, id);
+      .link(path, params.cid);
 
     const qo = this._server
       .database()
@@ -52,7 +78,9 @@ export default class GetObjectRoute extends ObjectRoute {
       qo.prefix([
         '',
         this._config.name,
-        id
+        params.oid,
+        child,
+        params.cid
       ].join('/'));
     }
 
@@ -127,7 +155,8 @@ export default class GetObjectRoute extends ObjectRoute {
   _handlePubsub(event) {
     const cancel =
       typeof event.meta.oid === 'undefined' ||
-      typeof event.meta.child !== 'undefined';
+      typeof event.meta.child === 'undefined' ||
+      typeof event.meta.cid === 'undefined';
 
     if (cancel === true) {
       return;
@@ -136,7 +165,9 @@ export default class GetObjectRoute extends ObjectRoute {
     const path = [
       '',
       this._config.name,
-      event.meta.oid
+      event.meta.oid,
+      event.meta.child,
+      event.meta.cid
     ].join('/');
 
     this._server

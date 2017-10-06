@@ -29,12 +29,12 @@ export default class GetListRoute extends Route {
   }
 
   _validateQuery(request, response, next) {
-    if (this._validator !== null) {
-      this._validator.validate(request.query(), next);
+    if (this._validator === null) {
+      next();
       return;
     }
 
-    next();
+    this._validator.validate(request.query(), next);
   }
 
   _validatePath(request, response, next) {
@@ -76,20 +76,27 @@ export default class GetListRoute extends Route {
         request.query()
       );
 
-    this._server
+    const qo = this._server
       .database()
       .connection(this._config.database)
-      .query(query)
-      .prefix(this._config.name)
-      .execute(values, (error, result) => {
-        if (error) {
-          next(request.error('500 invalid_query ' + error));
-          return;
-        }
+      .query(query);
 
-        response.datum('total', result[0].total);
-        next();
-      });
+    if (this._cache === true) {
+      qo.prefix([
+        '',
+        this._config.name,
+      ].join('/'));
+    }
+
+    qo.execute(values, (error, result) => {
+      if (error) {
+        next(request.error('500 invalid_query ' + error));
+        return;
+      }
+
+      response.datum('total', result[0].total);
+      next();
+    });
   }
 
   _selectList(request, response, next) {
@@ -107,7 +114,10 @@ export default class GetListRoute extends Route {
       .query(query);
 
     if (this._cache === true) {
-      qo.prefix(this._config.name);
+      qo.prefix([
+        '',
+        this._config.name,
+      ].join('/'));
     }
 
     qo.execute(values, (error, data) => {
@@ -184,13 +194,18 @@ export default class GetListRoute extends Route {
   }
 
   _handlePubsub(event) {
+    const path = [
+      '',
+      this._config.name
+    ].join('/');
+
     this._server
       .cache()
-      .invalidate(this._config.name);
+      .invalidate(path);
 
     this._server
       .pubsub()
-      .fanout('/' + this._config.name)
+      .fanout(path)
       .publish(omit(event, 'data'));
   }
 }

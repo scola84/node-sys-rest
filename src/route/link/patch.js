@@ -31,13 +31,13 @@ export default class PatchLinkRoute extends PutLinkRoute {
   _validatePath(request, response, next) {
     const child = request.param('child');
 
-    if (this._config.complex.indexOf(child) > -1 === true) {
-      request.allow('PATCH', false);
+    if (this._config.complex.indexOf(child) > -1) {
+      request.allow(request.method(), false);
       next(request.error('405 invalid_method'));
       return;
     }
 
-    if (this._config.simple.indexOf(child) > -1 === false) {
+    if (this._config.simple.indexOf(child) === -1) {
       next(request.error('404 invalid_path'));
       return;
     }

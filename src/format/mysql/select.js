@@ -8,6 +8,14 @@ const regexp = {
 };
 
 const parts = {
+  link: `
+    SELECT *
+    FROM %s.%s_%s
+    WHERE %s_id = ?`,
+  object: `
+    SELECT *
+    FROM %s.%s
+    WHERE %s_id = ?`,
   list: {
     count: `
       SELECT COUNT(*) AS total FROM %s.%s l0`,
@@ -42,14 +50,22 @@ const parts = {
     },
     limit: `
       LIMIT ?,?`
-  },
-  object: `
-    SELECT *
-    FROM %s.%s
-    WHERE %s_id = ?`
+  }
 };
 
 export default class MysqlSelect {
+  link(path, id) {
+    const query = sprintf(
+      parts.link,
+      '%(db)s',
+      path[0],
+      path[1],
+      path[1]
+    );
+
+    return [query, id];
+  }
+
   object(name, id) {
     const query = sprintf(
       parts.object,

@@ -1,3 +1,4 @@
+import omit from 'lodash-es/omit';
 import GetListByUserRoute from './get-by-user';
 
 export default class GetListByUserParentRoute extends GetListByUserRoute {
@@ -61,12 +62,18 @@ export default class GetListByUserParentRoute extends GetListByUserRoute {
   }
 
   _handlePubsub(event) {
+    const cachePath = [
+      '',
+      this._config.name
+    ].join('/');
+
     this._server
       .cache()
-      .invalidate(this._config.name);
+      .invalidate(cachePath);
 
     this._parents.forEach((parent) => {
-      const channel = '/' + [
+      const pubsubPath = [
+        '',
         'my',
         parent,
         this._config.name
@@ -74,8 +81,8 @@ export default class GetListByUserParentRoute extends GetListByUserRoute {
 
       this._server
         .pubsub()
-        .fanout(channel)
-        .publish(event);
+        .fanout(pubsubPath)
+        .publish(omit(event, 'data'));
     });
   }
 }

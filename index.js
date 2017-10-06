@@ -1,6 +1,7 @@
 import Rest from './src/rest';
 
 import DeleteLinkRoute from './src/route/link/delete';
+import GetLinkRoute from './src/route/link/get';
 import PatchLinkRoute from './src/route/link/patch';
 import PostLinkRoute from './src/route/link/post';
 import PutLinkRoute from './src/route/link/put';
@@ -19,6 +20,7 @@ import PutObjectRoute from './src/route/object/put';
 export {
   Rest,
   DeleteLinkRoute,
+  GetLinkRoute,
   PatchLinkRoute,
   PostLinkRoute,
   PutLinkRoute,
