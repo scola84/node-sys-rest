@@ -18,7 +18,8 @@ export default class GetListByUserRoute extends GetListRoute {
           execute: [
             (rq, rs, n) => this._prepareSelect(rq, rs, n),
             (rq, rs, n) => this._selectTotal(rq, rs, n),
-            (rq, rs, n) => this._selectList(rq, rs, n)
+            (rq, rs, n) => this._selectList(rq, rs, n),
+            (rq, rs, n) => this._sendResponse(rq, rs, n)
           ],
           subscribe: [
             (rq, rs, n) => this._subscribeRequest(rq, rs, n)

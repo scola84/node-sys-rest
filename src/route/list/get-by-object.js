@@ -20,7 +20,8 @@ export default class GetListByObjectRoute extends GetListRoute {
           execute: [
             (rq, rs, n) => this._prepareSelect(rq, rs, n),
             (rq, rs, n) => this._selectTotal(rq, rs, n),
-            (rq, rs, n) => this._selectList(rq, rs, n)
+            (rq, rs, n) => this._selectList(rq, rs, n),
+            (rq, rs, n) => this._sendResponse(rq, rs, n)
           ],
           subscribe: [
             (rq, rs, n) => this._subscribeRequest(rq, rs, n)
@@ -36,7 +37,10 @@ export default class GetListByObjectRoute extends GetListRoute {
       this._config.complex.indexOf(child) > -1 ||
       this._config.simple.indexOf(child) > -1;
 
-    if (isChild === false) {
+    const isParent =
+      this._config.parents.indexOf(child) > -1;
+
+    if (isChild === false && isParent === false) {
       next(request.error('404 invalid_path'));
       return;
     }
@@ -44,6 +48,24 @@ export default class GetListByObjectRoute extends GetListRoute {
     this._rest
       .validator()
       .validate(request.params(), next);
+  }
+
+  _validateQuery(request, response, next) {
+    const child = request.param('child');
+
+    if (this._validator === null) {
+      next();
+      return;
+    }
+
+    const validator = this._validator[child];
+
+    if (typeof validator === 'undefined') {
+      next();
+      return;
+    }
+
+    validator.validate(request.query(), next);
   }
 
   _authorizeRole(request, response, next) {
@@ -80,6 +102,10 @@ export default class GetListByObjectRoute extends GetListRoute {
 
     if (this._config.simple.indexOf(child) > -1) {
       path = [path.reverse().join('_'), null];
+    }
+
+    if (this._config.parents.indexOf(child) > -1) {
+      path.reversed = true;
     }
 
     request.datum('path', path);

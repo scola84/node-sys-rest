@@ -17,7 +17,8 @@ export default class GetLinkRoute extends LinkRoute {
             (rq, rs, n) => this._authorizeUserChild(rq, rs, n)
           ],
           execute: [
-            (rq, rs, n) => this._selectLink(rq, rs, n)
+            (rq, rs, n) => this._selectLink(rq, rs, n),
+            (rq, rs, n) => this._sendResponse(rq, rs, n)
           ],
           subscribe: [
             (rq, rs, n) => this._subscribeRequest(rq, rs, n)
@@ -95,61 +96,12 @@ export default class GetLinkRoute extends LinkRoute {
         return;
       }
 
-      data = this._applyFilter({
+      response.data(this._applyFilter({
         data: data[0]
-      });
-
-      let status = 200;
-
-      const write =
-        request.header('Connection') === 'keep-alive' &&
-        this._subscribe === true;
-
-      const match = this._handleEtag(request, response,
-        data.data, this._etag);
-
-      if (match === true) {
-        status = 304;
-        data = '';
-      }
-
-      response.status(status);
-
-      if (request.method() === 'HEAD') {
-        response.encoder().option('push', false);
-      }
-
-      if (write === true) {
-        response.write(data);
-      } else {
-        response.end(data);
-      }
+      }));
 
       next();
     });
-  }
-
-  _handleEtag(request, response, data, field) {
-    if (field === false) {
-      return false;
-    }
-
-    const cancel =
-      this._etag === false ||
-      typeof data[field] === 'undefined';
-
-    if (cancel === true) {
-      return false;
-    }
-
-    response.header('Etag', data[field]);
-
-    if (request.header('If-None-Match') === data[field]) {
-      return true;
-    }
-
-    delete data[field];
-    return false;
   }
 
   _handlePubsub(event) {

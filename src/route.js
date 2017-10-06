@@ -320,8 +320,63 @@ export default class Route {
     return this._filter(list);
   }
 
+  _sendResponse(request, response, next) {
+    let status = 200;
+    let data = response.data();
+
+    const write =
+      request.header('Connection') === 'keep-alive' &&
+      request.codec() === false &&
+      this._subscribe === true;
+
+    const match = this._handleEtag(request, response,
+      data.data, this._etag);
+
+    if (match === true) {
+      status = 304;
+      data = '';
+    }
+
+    response.status(status);
+
+    if (request.method() === 'HEAD') {
+      response.encoder().option('push', false);
+    }
+
+    if (write === true) {
+      response.write(data);
+    } else {
+      response.end(data);
+    }
+
+    next();
+  }
+
+  _handleEtag(request, response, data, field) {
+    if (field === false) {
+      return false;
+    }
+
+    const cancel =
+      this._etag === false ||
+      typeof data[field] === 'undefined';
+
+    if (cancel === true) {
+      return false;
+    }
+
+    response.header('Etag', data[field]);
+
+    if (request.header('If-None-Match') === data[field]) {
+      return true;
+    }
+
+    delete data[field];
+    return false;
+  }
+
   _subscribeRequest(request, response) {
-    if (request.header('Connection') === 'close') {
+    if (request.codec() !== false) {
       return;
     }
 

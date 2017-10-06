@@ -34,16 +34,18 @@ export default class WriteLinkRoute extends Route {
     const child = request.param('child');
 
     if (this._config.simple.indexOf(child) > -1) {
-      this._publishObject(request, response, next);
+      this._publishObject(request, response);
     }
 
     if (this._config.complex.indexOf(child) > -1) {
-      this._publishParent(request, response, next);
-      this._publishChild(request, response, next);
+      this._publishParent(request, response);
+      this._publishChild(request, response);
     }
+
+    next();
   }
 
-  _publishObject(request, response, next) {
+  _publishObject(request, response) {
     this._server
       .pubsub()
       .client()
@@ -60,11 +62,9 @@ export default class WriteLinkRoute extends Route {
           data: request.data()
         }
       });
-
-    next();
   }
 
-  _publishParent(request, response, next) {
+  _publishParent(request) {
     this._server
       .pubsub()
       .client()
@@ -79,11 +79,9 @@ export default class WriteLinkRoute extends Route {
           }
         }
       });
-
-    next();
   }
 
-  _publishChild(request, response, next) {
+  _publishChild(request, response) {
     this._server
       .pubsub()
       .client()
@@ -98,7 +96,5 @@ export default class WriteLinkRoute extends Route {
           }
         }
       });
-
-    next();
   }
 }

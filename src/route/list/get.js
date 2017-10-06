@@ -19,7 +19,8 @@ export default class GetListRoute extends Route {
           execute: [
             (rq, rs, n) => this._prepareSelect(rq, rs, n),
             (rq, rs, n) => this._selectTotal(rq, rs, n),
-            (rq, rs, n) => this._selectList(rq, rs, n)
+            (rq, rs, n) => this._selectList(rq, rs, n),
+            (rq, rs, n) => this._sendResponse(rq, rs, n)
           ],
           subscribe: [
             (rq, rs, n) => this._subscribeRequest(rq, rs, n)
@@ -126,38 +127,12 @@ export default class GetListRoute extends Route {
         return;
       }
 
-      data = this._applyFilter({
+      response.data(this._applyFilter({
         meta: {
           total: response.datum('total')
         },
         data
-      });
-
-      let status = 200;
-
-      const write =
-        request.header('Connection') === 'keep-alive' &&
-        this._subscribe === true;
-
-      const match = this._handleEtag(request, response,
-        data.data, this._etag);
-
-      if (match === true) {
-        status = 304;
-        data = '';
-      }
-
-      response.status(status);
-
-      if (request.method() === 'HEAD') {
-        response.encoder().option('push', false);
-      }
-
-      if (write === true) {
-        response.write(data);
-      } else {
-        response.end(data);
-      }
+      }));
 
       next();
     });
