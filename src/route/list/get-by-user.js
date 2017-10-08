@@ -52,25 +52,14 @@ export default class GetListByUserRoute extends GetListRoute {
     next();
   }
 
-  _handlePubsub(event) {
-    const cachePath = [
-      '',
-      this._config.name
-    ].join('/');
-
-    const pubsubPath = [
-      '',
-      'my',
-      this._config.name
-    ].join('/');
-
-    this._server
-      .cache()
-      .invalidate(cachePath);
-
+  _publishChange(event) {
     this._server
       .pubsub()
-      .fanout(pubsubPath)
+      .fanout([
+        '',
+        'my',
+        this._config.name
+      ].join('/'))
       .publish(omit(event, 'data'));
   }
 }

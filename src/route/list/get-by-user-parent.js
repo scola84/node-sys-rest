@@ -62,16 +62,7 @@ export default class GetListByUserParentRoute extends GetListByUserRoute {
     next();
   }
 
-  _handlePubsub(event) {
-    const cachePath = [
-      '',
-      this._config.name
-    ].join('/');
-
-    this._server
-      .cache()
-      .invalidate(cachePath);
-
+  _publishChange(event) {
     this._parents.forEach((parent) => {
       const pubsubPath = [
         '',

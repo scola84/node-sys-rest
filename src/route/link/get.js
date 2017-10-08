@@ -114,21 +114,31 @@ export default class GetLinkRoute extends LinkRoute {
       return;
     }
 
-    const path = [
-      '',
-      this._config.name,
-      event.meta.oid,
-      event.meta.child,
-      event.meta.cid
-    ].join('/');
+    super._handlePubsub(event);
+  }
 
+  _invalidateCache(event) {
     this._server
       .cache()
-      .invalidate(path);
+      .invalidate([
+        '',
+        this._config.name,
+        event.meta.oid,
+        event.meta.child,
+        event.meta.cid
+      ].join('/'));
+  }
 
+  _publishChange(event) {
     this._server
       .pubsub()
-      .fanout(path)
+      .fanout([
+        '',
+        this._config.name,
+        event.meta.oid,
+        event.meta.child,
+        event.meta.cid
+      ].join('/'))
       .publish(event);
   }
 }

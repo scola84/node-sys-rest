@@ -123,25 +123,18 @@ export default class GetListByObjectRoute extends GetListRoute {
       return;
     }
 
-    const cachePath = [
-      '',
-      this._config.name
-    ].join('/');
+    super._handlePubsub(event);
+  }
 
-    const pubsubPath = [
-      '',
-      this._config.name,
-      event.meta.oid,
-      event.meta.child
-    ].join('/');
-
-    this._server
-      .cache()
-      .invalidate(cachePath);
-
+  _publishChange(event) {
     this._server
       .pubsub()
-      .fanout(pubsubPath)
+      .fanout([
+        '',
+        this._config.name,
+        event.meta.oid,
+        event.meta.child
+      ].join('/'))
       .publish(omit(event, 'data'));
   }
 }

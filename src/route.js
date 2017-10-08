@@ -137,11 +137,14 @@ export default class Route {
 
     if (this._subscribe === true && available.subscribe) {
       enabled = enabled.concat(available.subscribe);
-      this._bindPubsub();
     }
 
     if (this._publish === true && available.publish) {
       enabled = enabled.concat(available.publish);
+    }
+
+    if (this._subscribe === true || this._cache === true) {
+      this._bindPubsub();
     }
 
     return enabled;
@@ -386,5 +389,17 @@ export default class Route {
       .subscribe(request, response);
   }
 
-  _handlePubsub() {}
+  _handlePubsub(event) {
+    if (this._cache === true) {
+      this._invalidateCache(event);
+    }
+
+    if (this._subscribe === true) {
+      this._publishChange(event);
+    }
+  }
+
+  _invalidateCache() {}
+
+  _publishChange() {}
 }

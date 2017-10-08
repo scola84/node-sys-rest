@@ -168,19 +168,22 @@ export default class GetListRoute extends Route {
     return false;
   }
 
-  _handlePubsub(event) {
-    const path = [
-      '',
-      this._config.name
-    ].join('/');
-
+  _invalidateCache() {
     this._server
       .cache()
-      .invalidate(path);
+      .invalidate([
+        '',
+        this._config.name
+      ].join('/'));
+  }
 
+  _publishChange(event) {
     this._server
       .pubsub()
-      .fanout(path)
+      .fanout([
+        '',
+        this._config.name
+      ].join('/'))
       .publish(omit(event, 'data'));
   }
 }
