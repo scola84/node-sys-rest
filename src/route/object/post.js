@@ -1,28 +1,31 @@
 import WriteObjectRoute from './write';
 
 export default class PostObjectRoute extends WriteObjectRoute {
+
   start() {
-    this._server
-      .router()
-      .post(
-        '/' + this._config.name,
-        ...this._handlers({
-          validate: [
-            (rq, rs, n) => this._validateData(rq, rs, n)
-          ],
-          authorize: [
-            (rq, rs, n) => this._checkUser(rq, rs, n),
-            (rq, rs, n) => this._authorizeRole(rq, rs, n)
-          ],
-          execute: [
-            (rq, rs, n) => this._insertObject(rq, rs, n)
-          ],
-          publish: [
-            (rq, rs, n) => this._publishObject(rq, rs, n)
-          ]
-        })
-      )
-      .extract();
+    this._handler([
+      (rq, rs, n) => this._checkUser(rq, rs, n),
+      (rq, rs, n) => this._authorizeRole(rq, rs, n)
+    ], this._authorize);
+
+    this._handler([
+      (rq, rs, n) => this._extractData(rq, rs, n),
+      (rq, rs, n) => this._transformData(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._validateData(rq, rs, n)
+    ], this._validate);
+
+    this._handler([
+      (rq, rs, n) => this._insertObject(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._publishObject(rq, rs, n)
+    ], this._publish);
+
+    this._post('/' + this._config.name);
   }
 
   _insertObject(request, response, next) {
@@ -30,7 +33,7 @@ export default class PostObjectRoute extends WriteObjectRoute {
       .format('insert')
       .object(this._config.name);
 
-    const values = this._applyFilter(request.data());
+    const values = request.data();
 
     this._server
       .database()
@@ -47,6 +50,7 @@ export default class PostObjectRoute extends WriteObjectRoute {
           .id(result);
 
         const location = [
+          '',
           this._config.name,
           oid
         ].join('/');

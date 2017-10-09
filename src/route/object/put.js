@@ -3,33 +3,38 @@ import WriteObjectRoute from './write';
 
 export default class PutObjectRoute extends WriteObjectRoute {
   start() {
-    this._server
-      .router()
-      .put(
-        '/' + this._config.name + '/:oid',
-        ...this._handlers({
-          validate: [
-            (rq, rs, n) => this._validatePath(rq, rs, n),
-            (rq, rs, n) => this._validateData(rq, rs, n)
-          ],
-          authorize: [
-            (rq, rs, n) => this._checkUser(rq, rs, n),
-            (rq, rs, n) => this._authorizeRole(rq, rs, n),
-            (rq, rs, n) => this._authorizeUser(rq, rs, n)
-          ],
-          execute: [
-            (rq, rs, n) => this._updateObject(rq, rs, n)
-          ],
-          publish: [
-            (rq, rs, n) => this._publishObject(rq, rs, n)
-          ]
-        })
-      )
-      .extract();
+    this._handler([
+      (rq, rs, n) => this._validatePath(rq, rs, n)
+    ], this._validate);
+
+    this._handler([
+      (rq, rs, n) => this._checkUser(rq, rs, n),
+      (rq, rs, n) => this._authorizeRole(rq, rs, n),
+      (rq, rs, n) => this._authorizeUser(rq, rs, n)
+    ], this._authorize);
+
+    this._handler([
+      (rq, rs, n) => this._extractData(rq, rs, n),
+      (rq, rs, n) => this._transformData(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._validateData(rq, rs, n)
+    ], this._validate);
+
+    this._handler([
+      (rq, rs, n) => this._updateObject(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._publishObject(rq, rs, n)
+    ], this._publish);
+
+    this._put('/' + this._config.name + '/:oid');
   }
 
   _updateObject(request, response, next) {
-    const data = this._applyFilter(request.data());
+    const data = request.data();
 
     if (this._etag) {
       data[this._etag] = '"' + shortid.generate() + '"';

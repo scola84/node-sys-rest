@@ -2,29 +2,28 @@ import LinkRoute from './route';
 
 export default class GetLinkRoute extends LinkRoute {
   start() {
-    this._server
-      .router()
-      .get(
-        '/' + this._config.name + '/:oid/:child/:cid',
-        ...this._handlers({
-          validate: [
-            (rq, rs, n) => this._validatePath(rq, rs, n)
-          ],
-          authorize: [
-            (rq, rs, n) => this._checkUser(rq, rs, n),
-            (rq, rs, n) => this._authorizeRole(rq, rs, n),
-            (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
-            (rq, rs, n) => this._authorizeUserChild(rq, rs, n)
-          ],
-          execute: [
-            (rq, rs, n) => this._selectLink(rq, rs, n),
-            (rq, rs, n) => this._sendResponse(rq, rs, n)
-          ],
-          subscribe: [
-            (rq, rs, n) => this._subscribeRequest(rq, rs, n)
-          ]
-        })
-      );
+    this._handler([
+      (rq, rs, n) => this._validatePath(rq, rs, n)
+    ], this._validate);
+
+    this._handler([
+      (rq, rs, n) => this._checkUser(rq, rs, n),
+      (rq, rs, n) => this._authorizeRole(rq, rs, n),
+      (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
+      (rq, rs, n) => this._authorizeUserChild(rq, rs, n)
+    ], this._authorize);
+
+    this._handler([
+      (rq, rs, n) => this._selectLink(rq, rs, n),
+      (rq, rs, n) => this._transformData(rq, rs, n),
+      (rq, rs, n) => this._sendResponse(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._subscribeRequest(rq, rs, n)
+    ], this._publish);
+
+    this._get('/' + this._config.name + '/:oid/:child/:cid');
   }
 
   _validatePath(request, response, next) {
@@ -96,9 +95,9 @@ export default class GetLinkRoute extends LinkRoute {
         return;
       }
 
-      response.data(this._applyFilter({
+      response.data({
         data: data[0]
-      }));
+      });
 
       next();
     });

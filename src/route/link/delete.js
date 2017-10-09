@@ -2,28 +2,26 @@ import WriteLinkRoute from './write';
 
 export default class DeleteLinkRoute extends WriteLinkRoute {
   start() {
-    this._server
-      .router()
-      .delete(
-        '/' + this._config.name + '/:oid/:child/:cid',
-        ...this._handlers({
-          validate: [
-            (rq, rs, n) => this._validatePath(rq, rs, n)
-          ],
-          authorize: [
-            (rq, rs, n) => this._checkUser(rq, rs, n),
-            (rq, rs, n) => this._authorizeRole(rq, rs, n),
-            (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
-            (rq, rs, n) => this._authorizeUserChild(rq, rs, n)
-          ],
-          execute: [
-            (rq, rs, n) => this._deleteLink(rq, rs, n)
-          ],
-          publish: [
-            (rq, rs, n) => this._publishLink(rq, rs, n)
-          ]
-        })
-      );
+    this._handler([
+      (rq, rs, n) => this._validatePath(rq, rs, n)
+    ], this._validate);
+
+    this._handler([
+      (rq, rs, n) => this._checkUser(rq, rs, n),
+      (rq, rs, n) => this._authorizeRole(rq, rs, n),
+      (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
+      (rq, rs, n) => this._authorizeUserChild(rq, rs, n)
+    ], this._authorize);
+
+    this._handler([
+      (rq, rs, n) => this._deleteLink(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._publishLink(rq, rs, n)
+    ], this._publish);
+
+    this._delete('/' + this._config.name + '/:oid/:child/:cid');
   }
 
   _deleteLink(request, response, next) {
@@ -52,7 +50,7 @@ export default class DeleteLinkRoute extends WriteLinkRoute {
       .format('delete')
       .simple(path, params, this._etag, etag);
 
-    this._delete(query, values, etag, request, response, next);
+    this._executeDelete(query, values, etag, request, response, next);
   }
 
   _deleteComplex(request, response, next) {
@@ -68,10 +66,10 @@ export default class DeleteLinkRoute extends WriteLinkRoute {
       .format('delete')
       .complex(path, params);
 
-    this._delete(query, values, null, request, response, next);
+    this._executeDelete(query, values, null, request, response, next);
   }
 
-  _delete(query, values, etag, request, response, next) {
+  _executeDelete(query, values, etag, request, response, next) {
     this._server
       .database()
       .connection(this._config.database)

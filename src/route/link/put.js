@@ -3,30 +3,35 @@ import WriteLinkRoute from './write';
 
 export default class PutLinkRoute extends WriteLinkRoute {
   start() {
-    this._server
-      .router()
-      .put(
-        '/' + this._config.name + '/:oid/:child/:cid',
-        ...this._handlers({
-          validate: [
-            (rq, rs, n) => this._validatePath(rq, rs, n),
-            (rq, rs, n) => this._validateData(rq, rs, n)
-          ],
-          authorize: [
-            (rq, rs, n) => this._checkUser(rq, rs, n),
-            (rq, rs, n) => this._authorizeRole(rq, rs, n),
-            (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
-            (rq, rs, n) => this._authorizeUserChild(rq, rs, n)
-          ],
-          execute: [
-            (rq, rs, n) => this._updateLink(rq, rs, n)
-          ],
-          publish: [
-            (rq, rs, n) => this._publishLink(rq, rs, n)
-          ]
-        })
-      )
-      .extract();
+    this._handler([
+      (rq, rs, n) => this._validatePath(rq, rs, n)
+    ], this._validate);
+
+    this._handler([
+      (rq, rs, n) => this._checkUser(rq, rs, n),
+      (rq, rs, n) => this._authorizeRole(rq, rs, n),
+      (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
+      (rq, rs, n) => this._authorizeUserChild(rq, rs, n)
+    ], this._authorize);
+
+    this._handler([
+      (rq, rs, n) => this._extractData(rq, rs, n),
+      (rq, rs, n) => this._transformData(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._validateData(rq, rs, n)
+    ], this._validate);
+
+    this._handler([
+      (rq, rs, n) => this._updateLink(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._publishLink(rq, rs, n)
+    ], this._publish);
+
+    this._put('/' + this._config.name + '/:oid/:child/:cid');
   }
 
   _updateLink(request, response, next) {
@@ -49,10 +54,10 @@ export default class PutLinkRoute extends WriteLinkRoute {
       child
     ];
 
-    const data = this._applyFilter(Object.assign({
+    const data = Object.assign({
       [this._config.name + '_id']: params.oid,
       [child + '_id']: params.cid
-    }, request.data()));
+    }, request.data());
 
     if (this._etag) {
       data[this._etag] = '"' + shortid.generate() + '"';
@@ -88,10 +93,10 @@ export default class PutLinkRoute extends WriteLinkRoute {
       child
     ];
 
-    const data = this._applyFilter({
+    const data = {
       [this._config.name + '_id']: params.oid,
       [child + '_id']: params.cid
-    });
+    };
 
     const [query, values] = this._format
       .format('update')

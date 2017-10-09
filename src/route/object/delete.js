@@ -2,27 +2,25 @@ import WriteObjectRoute from './write';
 
 export default class DeleteObjectRoute extends WriteObjectRoute {
   start() {
-    this._server
-      .router()
-      .delete(
-        '/' + this._config.name + '/:oid',
-        ...this._handlers({
-          validate: [
-            (rq, rs, n) => this._validatePath(rq, rs, n)
-          ],
-          authorize: [
-            (rq, rs, n) => this._checkUser(rq, rs, n),
-            (rq, rs, n) => this._authorizeRole(rq, rs, n),
-            (rq, rs, n) => this._authorizeUser(rq, rs, n)
-          ],
-          execute: [
-            (rq, rs, n) => this._deleteObject(rq, rs, n)
-          ],
-          publish: [
-            (rq, rs, n) => this._publishObject(rq, rs, n)
-          ]
-        })
-      );
+    this._handler([
+      (rq, rs, n) => this._validatePath(rq, rs, n)
+    ], this._validate);
+
+    this._handler([
+      (rq, rs, n) => this._checkUser(rq, rs, n),
+      (rq, rs, n) => this._authorizeRole(rq, rs, n),
+      (rq, rs, n) => this._authorizeUser(rq, rs, n)
+    ], this._authorize);
+
+    this._handler([
+      (rq, rs, n) => this._deleteObject(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._publishObject(rq, rs, n)
+    ], this._publish);
+
+    this._delete('/' + this._config.name + '/:oid');
   }
 
   _deleteObject(request, response, next) {

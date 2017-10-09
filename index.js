@@ -17,6 +17,10 @@ import PatchObjectRoute from './src/route/object/patch';
 import PostObjectRoute from './src/route/object/post';
 import PutObjectRoute from './src/route/object/put';
 
+import extractData from './src/helper/extract-data';
+import extractFile from './src/helper/extract-file';
+import transformFile from './src/helper/transform-file';
+
 export {
   Rest,
   DeleteLinkRoute,
@@ -32,5 +36,8 @@ export {
   GetObjectRoute,
   PatchObjectRoute,
   PostObjectRoute,
-  PutObjectRoute
+  PutObjectRoute,
+  extractData,
+  extractFile,
+  transformFile
 };

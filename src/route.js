@@ -1,5 +1,6 @@
 import eachOf from 'async/eachOf';
 import waterfall from 'async/waterfall';
+import extractData from './helper/extract-data';
 
 export default class Route {
   constructor() {
@@ -7,12 +8,14 @@ export default class Route {
     this._cache = true;
     this._config = null;
     this._etag = '_etag';
-    this._filter = (o) => o;
+    this._extract = extractData();
     this._format = null;
+    this._handlers = [];
     this._publish = true;
     this._rest = null;
     this._server = null;
     this._subscribe = true;
+    this._transform = null;
     this._validate = true;
     this._validator = null;
   }
@@ -57,12 +60,12 @@ export default class Route {
     return this;
   }
 
-  filter(value = null) {
+  extract(value = null) {
     if (value === null) {
-      return this._filter;
+      return this._extract;
     }
 
-    this._filter = value;
+    this._extract = value;
     return this;
   }
 
@@ -102,6 +105,15 @@ export default class Route {
     return this;
   }
 
+  transform(value = null) {
+    if (value === null) {
+      return this._transform;
+    }
+
+    this._transform = value;
+    return this;
+  }
+
   validate(value = null) {
     if (value === null) {
       return this._validate;
@@ -120,34 +132,46 @@ export default class Route {
     return this;
   }
 
-  _handlers(available) {
-    let enabled = [];
-
-    if (this._validate === true && available.validate) {
-      enabled = enabled.concat(available.validate);
+  _handler(handlers, action = true) {
+    if (action === true) {
+      this._handlers = this._handlers.concat(handlers);
     }
 
-    if (this._authorize === true && available.authorize) {
-      enabled = enabled.concat(available.authorize);
-    }
+    return this;
+  }
 
-    if (available.execute) {
-      enabled = enabled.concat(available.execute);
-    }
+  _delete(path) {
+    this._server
+      .router()
+      .delete(path, ...this._handlers);
+  }
 
-    if (this._subscribe === true && available.subscribe) {
-      enabled = enabled.concat(available.subscribe);
-    }
-
-    if (this._publish === true && available.publish) {
-      enabled = enabled.concat(available.publish);
-    }
+  _get(path) {
+    this._server
+      .router()
+      .get(path, ...this._handlers);
 
     if (this._subscribe === true || this._cache === true) {
       this._bindPubsub();
     }
+  }
 
-    return enabled;
+  _patch(path) {
+    this._server
+      .router()
+      .patch(path, ...this._handlers);
+  }
+
+  _post(path) {
+    this._server
+      .router()
+      .post(path, ...this._handlers);
+  }
+
+  _put(path) {
+    this._server
+      .router()
+      .put(path, ...this._handlers);
   }
 
   _bindPubsub() {
@@ -319,8 +343,22 @@ export default class Route {
     });
   }
 
-  _applyFilter(list) {
-    return this._filter(list);
+  _extractData(request, response, next) {
+    if (this._extract === null) {
+      next();
+      return;
+    }
+
+    this._extract(request, response, next);
+  }
+
+  _transformData(request, response, next) {
+    if (this._transform === null) {
+      next();
+      return;
+    }
+
+    this._transform(request, response, next);
   }
 
   _sendResponse(request, response, next) {

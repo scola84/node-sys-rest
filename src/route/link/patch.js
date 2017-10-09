@@ -2,30 +2,35 @@ import PutLinkRoute from './put';
 
 export default class PatchLinkRoute extends PutLinkRoute {
   start() {
-    this._server
-      .router()
-      .patch(
-        '/' + this._config.name + '/:oid/:child/:cid',
-        ...this._handlers({
-          validate: [
-            (rq, rs, n) => this._validatePath(rq, rs, n),
-            (rq, rs, n) => this._validateData(rq, rs, n)
-          ],
-          authorize: [
-            (rq, rs, n) => this._checkUser(rq, rs, n),
-            (rq, rs, n) => this._authorizeRole(rq, rs, n),
-            (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
-            (rq, rs, n) => this._authorizeUserChild(rq, rs, n)
-          ],
-          execute: [
-            (rq, rs, n) => this._updateLink(rq, rs, n)
-          ],
-          publish: [
-            (rq, rs, n) => this._publishLink(rq, rs, n)
-          ]
-        })
-      )
-      .extract();
+    this._handler([
+      (rq, rs, n) => this._validatePath(rq, rs, n)
+    ], this._validate);
+
+    this._handler([
+      (rq, rs, n) => this._checkUser(rq, rs, n),
+      (rq, rs, n) => this._authorizeRole(rq, rs, n),
+      (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
+      (rq, rs, n) => this._authorizeUserChild(rq, rs, n)
+    ], this._authorize);
+
+    this._handler([
+      (rq, rs, n) => this._extractData(rq, rs, n),
+      (rq, rs, n) => this._transformData(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._validateData(rq, rs, n)
+    ], this._validate);
+
+    this._handler([
+      (rq, rs, n) => this._updateLink(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._publishLink(rq, rs, n)
+    ], this._publish);
+
+    this._patch('/' + this._config.name + '/:oid/:child/:cid');
   }
 
   _validatePath(request, response, next) {

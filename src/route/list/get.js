@@ -4,29 +4,28 @@ import Route from '../../route';
 
 export default class GetListRoute extends Route {
   start() {
-    this._server
-      .router()
-      .get(
-        '/' + this._config.name,
-        ...this._handlers({
-          validate: [
-            (rq, rs, n) => this._validateQuery(rq, rs, n)
-          ],
-          authorize: [
-            (rq, rs, n) => this._checkUser(rq, rs, n),
-            (rq, rs, n) => this._authorizeRole(rq, rs, n)
-          ],
-          execute: [
-            (rq, rs, n) => this._prepareSelect(rq, rs, n),
-            (rq, rs, n) => this._selectTotal(rq, rs, n),
-            (rq, rs, n) => this._selectList(rq, rs, n),
-            (rq, rs, n) => this._sendResponse(rq, rs, n)
-          ],
-          subscribe: [
-            (rq, rs, n) => this._subscribeRequest(rq, rs, n)
-          ]
-        })
-      );
+    this._handler([
+      (rq, rs, n) => this._validateQuery(rq, rs, n)
+    ], this._validate);
+
+    this._handler([
+      (rq, rs, n) => this._checkUser(rq, rs, n),
+      (rq, rs, n) => this._authorizeRole(rq, rs, n)
+    ], this._authorize);
+
+    this._handler([
+      (rq, rs, n) => this._prepareSelect(rq, rs, n),
+      (rq, rs, n) => this._selectTotal(rq, rs, n),
+      (rq, rs, n) => this._selectList(rq, rs, n),
+      (rq, rs, n) => this._transformData(rq, rs, n),
+      (rq, rs, n) => this._sendResponse(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._subscribeRequest(rq, rs, n)
+    ], this._subscribe);
+
+    this._get('/' + this._config.name);
   }
 
   _validateQuery(request, response, next) {
@@ -127,12 +126,12 @@ export default class GetListRoute extends Route {
         return;
       }
 
-      response.data(this._applyFilter({
+      response.data({
         meta: {
           total: response.datum('total')
         },
         data
-      }));
+      });
 
       next();
     });

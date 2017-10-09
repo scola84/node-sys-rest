@@ -2,29 +2,34 @@ import WriteLinkRoute from './write';
 
 export default class PostLinkRoute extends WriteLinkRoute {
   start() {
-    this._server
-      .router()
-      .post(
-        '/' + this._config.name + '/:oid/:child',
-        ...this._handlers({
-          validate: [
-            (rq, rs, n) => this._validatePath(rq, rs, n),
-            (rq, rs, n) => this._validateData(rq, rs, n)
-          ],
-          authorize: [
-            (rq, rs, n) => this._checkUser(rq, rs, n),
-            (rq, rs, n) => this._authorizeRole(rq, rs, n),
-            (rq, rs, n) => this._authorizeUserObject(rq, rs, n)
-          ],
-          execute: [
-            (rq, rs, n) => this._insertLink(rq, rs, n)
-          ],
-          publish: [
-            (rq, rs, n) => this._publishLink(rq, rs, n)
-          ]
-        })
-      )
-      .extract();
+    this._handler([
+      (rq, rs, n) => this._validatePath(rq, rs, n)
+    ], this._validate);
+
+    this._handler([
+      (rq, rs, n) => this._checkUser(rq, rs, n),
+      (rq, rs, n) => this._authorizeRole(rq, rs, n),
+      (rq, rs, n) => this._authorizeUserObject(rq, rs, n)
+    ], this._authorize);
+
+    this._handler([
+      (rq, rs, n) => this._extractData(rq, rs, n),
+      (rq, rs, n) => this._transformData(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._validateData(rq, rs, n)
+    ], this._validate);
+
+    this._handler([
+      (rq, rs, n) => this._insertLink(rq, rs, n)
+    ]);
+
+    this._handler([
+      (rq, rs, n) => this._publishLink(rq, rs, n)
+    ], this._publish);
+
+    this._post('/' + this._config.name + '/:oid/:child');
   }
 
   _validatePath(request, response, next) {
@@ -53,7 +58,7 @@ export default class PostLinkRoute extends WriteLinkRoute {
       .format('insert')
       .link(path);
 
-    const values = this._applyFilter({
+    const values = Object.assign({
       [this._config.name + '_id']: params.oid
     }, request.data());
 
