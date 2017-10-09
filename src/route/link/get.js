@@ -7,7 +7,7 @@ export default class GetLinkRoute extends LinkRoute {
     ], this._validate);
 
     this._handler([
-      (rq, rs, n) => this._checkUser(rq, rs, n),
+      (rq, rs, n) => this._authenticateUser(rq, rs, n),
       (rq, rs, n) => this._authorizeRole(rq, rs, n),
       (rq, rs, n) => this._authorizeUserObject(rq, rs, n),
       (rq, rs, n) => this._authorizeUserChild(rq, rs, n)

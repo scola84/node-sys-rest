@@ -184,15 +184,29 @@ export default class Route {
       });
   }
 
-  _checkUser(request, response, next) {
+  _authenticateUser(request, response, next) {
     const user = request.connection().user();
 
-    if (user === null) {
-      next(request.error('401 invalid_auth'));
+    if (user !== null) {
+      next();
       return;
     }
 
-    next();
+    const header = request.header('Authorization', true);
+
+    if (typeof header[0] === 'undefined') {
+      next(request.error('403 invalid_auth'));
+      return;
+    }
+
+    const auth = this._rest.auth(header[0].toLowerCase());
+
+    if (auth === null) {
+      next(request.error('403 invalid_auth'));
+      return;
+    }
+
+    auth.authenticate(request, next);
   }
 
   _authorizeRequest(user, name, oid, callback) {

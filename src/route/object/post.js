@@ -4,7 +4,7 @@ export default class PostObjectRoute extends WriteObjectRoute {
 
   start() {
     this._handler([
-      (rq, rs, n) => this._checkUser(rq, rs, n),
+      (rq, rs, n) => this._authenticateUser(rq, rs, n),
       (rq, rs, n) => this._authorizeRole(rq, rs, n)
     ], this._authorize);
 

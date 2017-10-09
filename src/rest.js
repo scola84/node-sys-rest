@@ -1,10 +1,19 @@
 import get from 'lodash-es/get';
+import merge from 'lodash-es/merge';
 import { Validator } from '@scola/validator';
+import BasicAuth from './auth/basic';
+import BearerAuth from './auth/bearer';
+import User from './auth/user';
 import MysqlFormat from './format/mysql';
 
 const validator = new Validator();
 validator.field('oid').cast().integer();
 validator.field('cid').cast().integer();
+
+const auth = {
+  basic: BasicAuth,
+  bearer: BearerAuth
+};
 
 const format = {
   mysql: MysqlFormat
@@ -14,11 +23,24 @@ export default class Rest {
   constructor() {
     this._config = null;
     this._format = null;
+    this._masks = {};
     this._paths = {};
     this._routes = {};
     this._server = null;
     this._structure = {};
     this._validator = validator;
+  }
+
+  auth(name) {
+    if (typeof auth[name] === 'undefined') {
+      return null;
+    }
+
+    return new auth[name]()
+      .rest(this)
+      .config(this._config)
+      .format(this._format)
+      .server(this._server);
   }
 
   config(value = null) {
@@ -40,6 +62,15 @@ export default class Rest {
     }
 
     this._format = value;
+    return this;
+  }
+
+  masks(value = null) {
+    if (value === null) {
+      return this._masks;
+    }
+
+    merge(this._masks, value);
     return this;
   }
 
@@ -86,6 +117,18 @@ export default class Rest {
     this._routes[name] = this._routes[name].concat(factories);
 
     return this;
+  }
+
+  user(value) {
+    const user = new User();
+
+    user.details(value.details);
+    user.id(value.id);
+    user.masks(this._masks);
+    user.permissions(value.permissions);
+    user.token(value.token);
+
+    return user;
   }
 
   path(left, right = null) {
